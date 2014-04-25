@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!--The viewport meta tag is used to improve the presentation and behavior of the samples on iOS devices-->
+<meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">
+
+<title>Map - Millenium Challenge Account Indonesia</title>	
+<link rel="shortcut icon" href="http://mca-indonesia.go.id/wp-content/themes/mca/images/mca-favicon.png" type="image/x-icon">	
+<link rel="stylesheet" href="http://js.arcgis.com/3.9/js/dojo/dijit/themes/nihilo/nihilo.css">
+<link rel="stylesheet" href="http://js.arcgis.com/3.9/js/dojo/dijit/themes/claro/claro.css"> 
+<link rel="stylesheet" href="http://js.arcgis.com/3.9/js/esri/css/esri.css">
+<link rel="stylesheet" href="./css/template.css">
+<script src="http://js.arcgis.com/3.9/"></script>
+<script src="./js/mcai.js"></script>  
+</head>
+
+<body class="claro" background="images/batik-tile.jpg">
+<!--[if IE 7]>
+<style>
+  html, body {
+    margin: 0;
+  }
+</style>
+<![endif]-->
+
+<div id="main">
+<table border="0" width="100%" cellspacing="1">
+			<tr>
+				<td rowspan="2" width="121"><img border="0" src="http://mca-indonesia.go.id/wp-content/themes/mca/images/logo-mca-indonesia-s.png" width="115" height="103" align="right"></td>
+				<td valign="top"><b><font size="5" face="Arial" color="#336699">MILLENIUM CHALLENGE ACCOUNT - INDONESIA</font><font face="Arial"><font size="5" color="#336699"></br>
+				</font>
+				<font color="#D32250" size="4">Reducing poverty through economic growth</font></font></font></b><font face="Arial">
+				</font>
+				</font></b>
+				</td>
+			</tr>
+			<tr>
+				<td>
+					<div data-dojo-type="dijit.MenuBar" id="navMenu">
+					    <div data-dojo-type="dijit/MenuBarItem">
+					        <span><div id="HomeButton"></div></span>
+					    </div>
+					    <div data-dojo-type="dijit.PopupMenuBarItem">
+					        <span>District</span>
+					        <div data-dojo-type="dijit.DropDownMenu" id="bookmarks">
+					        </div>
+					    </div>
+					    <div data-dojo-type="dijit.PopupMenuBarItem">
+					        <span>Landscape</span>
+					        <div data-dojo-type="dijit.DropDownMenu" id="bookmarksLandscape">            
+					        </div>
+					    </div>
+					    <div data-dojo-type="dijit.PopupMenuBarItem">
+					        <span>Measurement</span>
+					        <div data-dojo-type="dijit.DropDownMenu">
+								<div id="measurementDiv"></div>
+					        </div>
+					    </div>
+						
+						<div data-dojo-type="dijit.PopupMenuBarItem">
+					        <span>Print</span>
+					        <div data-dojo-type="dijit.DropDownMenu">
+								
+					        </div>
+					    </div>
+						
+						<div data-dojo-type="dijit.PopupMenuBarItem">
+					        <span>Layers</span>
+					        <div data-dojo-type="dijit.DropDownMenu" id="divPine">
+								<div id="divTOC"><div id="toggle"></div></div>								
+					        </div>
+					    </div>
+						<div data-dojo-type="dijit.PopupMenuBarItem">
+					        <span>Legend</span>
+					        <div data-dojo-type="dijit.DropDownMenu" id="divPine2">
+								<div id="legendDiv"></div>
+					        </div>
+					    </div>						
+					</div>									
+				</td>
+			</tr>
+			</table>
+</div>
+<div id="map" style="z-index: 10;height: 80%;"></div>
+
+</body>
+</html>

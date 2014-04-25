@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8">
+    <title>Login</title>
+    
+    <link rel="stylesheet" href="./css/master.css">
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:400,700,600' rel='stylesheet' type='text/css'>
+  </head>
+  
+  <body>
+  <script>
+    function checkUser(form) {
+        if (form.username.value=="1" && form.password.value=="1") { 
+                location="./map.html"         
+        } else if (form.username.value=="2" && form.password.value=="2") {
+        		location="http://139.0.15.221/mcai"
+        } else {  alert("Invalid UserID and/or password")
+        }
+    }
+    </script>
+
+
+    <div class="wrap">
+      <div class="stacked">
+      	<center>
+	        <img src="./images/mcai-k.jpg" alt="Smiley face"><h4>MILLENNIUM CHALLENGE ACCOUNT-INDONESIA</h4>
+        </center>
+        <form action="" method="post" id="login" name="login">
+          <div class="field">
+            <label for="username">User Name</label>
+            <input type="username" name="username" id="username" class="text-input" placeholder="User Name" />
+          </div><!--field-->
+        
+          <div class="field">
+            <label for="password">Password</label>
+            <input type="password" name="password" id="password" class="text-input" placeholder="Secret Password" />
+          </div><!--field-->
+        
+          <div class="action clearfix">
+            <input type="button" value ="Login" onClick="checkUser(this.form)"/>
+          </div><!--action--> 
+        </form>
+        
+      </div><!--stacked-->
+    </div><!--wrap-->
+  </body>
+</html>

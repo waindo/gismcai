@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<layers>
+	<layer>
+		<type>dynamic</type>
+		<url>http://117.54.11.70:6080/arcgis/rest/services/mcai/Agriculture/MapServer</url>
+		<title>Argriculture</title>
+		<id>Argriculture</id>
+		<opacity>1.0</opacity>
+		<visible>false</visible>		
+	</layer>
+</layers>
