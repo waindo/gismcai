@@ -25,6 +25,12 @@ html, body {
 #map {
 	height: 500px;
 }
+
+#basemapGalleryDiv {
+	width:380px; 
+	height:280px;
+}
+
 #scalebarDiv {
 	position: bottom;
 }

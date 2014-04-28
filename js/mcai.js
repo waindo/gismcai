@@ -9,6 +9,7 @@
 	  "esri/dijit/HomeButton",
       "esri/dijit/Bookmarks",
 	  "esri/dijit/Scalebar",
+	  "esri/dijit/BasemapGallery", 
       "esri/layers/FeatureLayer",
 	  "esri/layers/ArcGISTiledMapServiceLayer", 
 	  "esri/layers/ArcGISDynamicMapServiceLayer",
@@ -48,8 +49,8 @@
 	  "dojo/domReady!"
     ],
       function (
-        Map, utils, InfoTemplate, Legend, InfoWindowLite, HomeButton, Bookmarks, Scalebar,FeatureLayer, 
-			ArcGISTiledMapServiceLayer, ArcGISDynamicMapServiceLayer, ImageParameters,  
+        Map, utils, InfoTemplate, Legend, InfoWindowLite, HomeButton, Bookmarks, Scalebar, BasemapGallery,  
+			FeatureLayer, ArcGISTiledMapServiceLayer, ArcGISDynamicMapServiceLayer, ImageParameters,  
 			SimpleFillSymbol, ClassBreaksRenderer, Extent, Print, PrintTemplate, esriRequest, esriConfig,
 		domConstruct, dom, on, parser, query, arrayUtils, connect, Color, 
 		CheckBox, AccordionContainer, BorderContainer, ContentPane, 
@@ -66,7 +67,7 @@
 			//{"xmin":10297596.450576257,"ymin":-1599674.1279517894,"xmax":16079904.766291732,"ymax":934366.2337577001,"spatialReference":{"wkid":102100}}
 			//{"xmin":91.494140625,"ymin":-10.986328125,"xmax":140.4052734375,"ymax":9.755859375,"spatialReference":{"wkid":4326}}
 			//),
-			center: [-240, -2],
+			center: [118, -3],
 			zoom: 5,
 			showAttribution: false,
 			sliderPosition: "top-right",
@@ -88,6 +89,23 @@
         }, "measurementDiv");
         measurement.startup();
 		
+		//add the basemap gallery, in this case we'll display maps from ArcGIS.com including bing maps
+        var basemapGallery = new BasemapGallery({
+          showArcGISBasemaps: true,
+          map: map
+        }, "basemapGalleryDiv");
+        basemapGallery.startup();
+		
+		var layer = new esri.dijit.BasemapLayer({
+			url:"http://117.54.11.70:6080/arcgis/rest/services/mcai/Modeldemo_indonesia_blank/MapServer"
+		});
+		var basemap = new esri.dijit.Basemap({
+			layers:[layer],
+			title:"None",
+			thumbnailUrl:"images/basebandNone.jpg"
+		});
+		basemapGallery.add(basemap);
+
 		//add scalebar
 		var scalebar = new Scalebar({
 		map: map,
@@ -116,7 +134,7 @@
 		//try {
 		toc = new TOC({
 			map: map,
-			layerInfos: [
+			layerInfos: [			
 				{
 					layer: mcaiLayer,
 					title: "MCA - Indonesia", 
@@ -154,6 +172,18 @@
 		});
 		
 		map.addLayers([indonesiaLayer, mcaiLayer, d_meranginLayer, landscapeLayer]);
+		
+		//zooming indonesiaLayer
+		/*
+		statesLayer.clearSelection();
+        var query = new esri.tasks.Query();
+        query.objectIds = [indonesiaLayer];
+        statesLayer.selectFeatures(query,esri.layers.FeatureLayer.SELECTION_NEW,function(features){
+          //zoom to the selected feature
+          var stateExtent = features[0].geometry.getExtent().expand(5.0);
+          map.setExtent(stateExtent);
+        });
+		*/
 		
 		//all functions
 		function setPrinter() {
