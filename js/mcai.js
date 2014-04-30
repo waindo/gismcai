@@ -62,20 +62,25 @@
         parser.parse();
 		
 		map = new Map("map", {
-			basemap: "topo", 
+			basemap: "gray", 
 			//extent: new Extent(
 			//{"xmin":10297596.450576257,"ymin":-1599674.1279517894,"xmax":16079904.766291732,"ymax":934366.2337577001,"spatialReference":{"wkid":102100}}
 			//{"xmin":91.494140625,"ymin":-10.986328125,"xmax":140.4052734375,"ymax":9.755859375,"spatialReference":{"wkid":4326}}
 			//),
+			//extent: indonesiaZoomLayer.fullExtent,
+			logo: false, 
+			//nav: true, 
+			//fadeOnZoom: true, 
+			
 			center: [118, -3],
 			zoom: 5,
 			showAttribution: false,
 			sliderPosition: "top-right",
 			sliderStyle: "large"
         });
-
-		var basemap = map.getLayer(map.layerIds[0]);
-			basemap.hide();
+		
+		//var basemap = map.getLayer(map.layerIds[0]);
+			//basemap.hide();
 			
 		//add homeButton
 		var home = new HomeButton({
@@ -114,17 +119,27 @@
 		scalebarUnit: "dual"
         },dojo.byId("scalebarDiv"));
 		
+		
+		//set featureLayer infoWindows
+		var infoTemplate = new InfoTemplate();
+		infoTemplate.setTitle("ID : ${ID}");
+
 		indonesiaLayer = new ArcGISDynamicMapServiceLayer("http://117.54.11.70:6080/arcgis/rest/services/mcai/Modeldemo_indonesia_blank/MapServer", {
 		});
 		mcaiLayer = new ArcGISDynamicMapServiceLayer("http://117.54.11.70:6080/arcgis/rest/services/mcai/Modeldemo_indonesia/MapServer", {
 		});
-		d_meranginLayer = new ArcGISDynamicMapServiceLayer("http://117.54.11.70:6080/arcgis/rest/services/mcai/Modeldemo_merangin/MapServer", {
+		districtLayer = new ArcGISDynamicMapServiceLayer("http://117.54.11.70:6080/arcgis/rest/services/mcai/Modeldemo_merangin/MapServer", {
+		})
+		/*
+		districtLayer = new FeatureLayer("http://117.54.11.70:6080/arcgis/rest/services/mcai/Modeldemo_merangin/MapServer", {
+			mode: FeatureLayer.MODE_SNAPSHOT,
+            infoTemplate: infoTemplate,
+            outFields: [*]
 		});
+		*/
 		landscapeLayer = new ArcGISDynamicMapServiceLayer("http://117.54.11.70:6080/arcgis/rest/services/mcai/Modeldemo_Landscape_analysis/MapServer", {
 		});
-		
-		//addMCAILayers();
-		isiBookmarks();
+				
 		setPrinter();
 		
 		//add TOC new layer list
@@ -142,7 +157,7 @@
 					//slider: true // whether to display a transparency slider.
 				},
 				{
-					layer: d_meranginLayer,
+					layer: districtLayer,
 					title: "District", 
 					//collapsed: false, // whether this root layer should be collapsed initially, default false.
 					//slider: true // whether to display a transparency slider.
@@ -171,21 +186,74 @@
 		//} catch (e) {  alert(e); }		 
 		});
 		
-		map.addLayers([indonesiaLayer, mcaiLayer, d_meranginLayer, landscapeLayer]);
+		//indonesiaLayer, 
+		map.addLayers([mcaiLayer, districtLayer, landscapeLayer]);
 		
-		//zooming indonesiaLayer
-		/*
-		statesLayer.clearSelection();
-        var query = new esri.tasks.Query();
-        query.objectIds = [indonesiaLayer];
-        statesLayer.selectFeatures(query,esri.layers.FeatureLayer.SELECTION_NEW,function(features){
-          //zoom to the selected feature
-          var stateExtent = features[0].geometry.getExtent().expand(5.0);
-          map.setExtent(stateExtent);
-        });
-		*/
+		
+		//event when user click menu item
+		on(dom.byId("HomeButton"), "click", FHomeButton);
+		
+		on(dom.byId("midMuaroJambi"), "click", FmidMuaroJambi);
+		on(dom.byId("midMerangin"), "click", FmidMerangin);
+		on(dom.byId("midMamuju"), "click", FmidMamuju);
+		on(dom.byId("midMamasa"), "click", FmidMamasa);
+		
+		on(dom.byId("milSungaiTenang"), "click", FmilSungaiTenang);
+
+		
+		
+		
 		
 		//all functions
+		function hideLayers() {
+			mcaiLayer.hide();
+			districtLayer.hide();
+			landscapeLayer.hide();		
+		}
+		
+		function FHomeButton() {
+			hideLayers();
+			mcaiLayer.show();
+		}
+		
+		function FmidMuaroJambi() {
+			hideLayers();
+			districtLayer.setVisibleLayers([49, 76]);
+			districtLayer.show();
+			
+			map.centerAndZoom(esri.geometry.Point([11557890.17294193,-185894.85278953813], 
+                  new esri.SpatialReference({ wkid: 102100 })),9);
+		}
+		function FmidMerangin() {
+			hideLayers();
+			districtLayer.setVisibleLayers([3, 4, 33]);
+			districtLayer.show();
+			
+			map.centerAndZoom(esri.geometry.Point([11360988.388079325,-245209.9867388319], 
+                  new esri.SpatialReference({ wkid: 102100 })),9);
+		}
+		function FmidMamuju() {
+			hideLayers();
+						
+			map.centerAndZoom(esri.geometry.Point([13279863.546149915,-200570.76222028106], 
+                  new esri.SpatialReference({ wkid: 102100 })),8);
+		}
+		function FmidMamasa() {
+			hideLayers();
+						
+			map.centerAndZoom(esri.geometry.Point([13278640.55369733,-328526.3475696624], 
+                  new esri.SpatialReference({ wkid: 102100 })),10);
+		}
+		
+		function FmilSungaiTenang() {
+			hideLayers();
+			landscapeLayer.setVisibleLayers([1, 2, 4]);
+			landscapeLayer.show();
+			
+			map.centerAndZoom(esri.geometry.Point([11352427.440911409,-282511.2565419838], 
+                  new esri.SpatialReference({ wkid: 102100 })),11);
+		}
+		
 		function setPrinter() {
 			var printTitle = "MCA - Indonesia"
 			var printUrl = "http://sampleserver6.arcgisonline.com/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task";
@@ -230,47 +298,5 @@
 				url: printUrl
 			}, dom.byId("print_button"));
 			printer.startup();
-		}
-		
-		
-		
-		
-		function isiBookmarks(){
-			// Bookmarks can be specified as an array of objects with the structure:
-			// { extent: <esri.geometry.Extent>, name: <some string> }
-			var bookmarks_list = [
-			{
-			  "extent":    {"xmin":11331789.443274448,"ymin":-278842.2791843226,"xmax":11749441.365824448,"ymax":-88666.95281089576,"spatialReference":{"wkid":102100}}
-			  ,"name": "Muaro Jambi" 
-			},
-			{
-			  "extent":   {"xmin":11138098.013599884,"ymin":-344883.87162266456,"xmax":11555749.936149884,"ymax":-154708.54524923777,"spatialReference":{"wkid":102100}}
-			  ,"name": "Merangin" 
-			},
-			{
-			  "extent":   {"xmin":12865880.600957407,"ymin":-415817.43387136597,"xmax":13701184.446057772,"ymax":-35466.78112434782,"spatialReference":{"wkid":102100}}
-				,"name": "Mamuju" 
-			},
-			{
-			  "extent":    {"xmin":13180648.283435678,"ymin":-381573.64519963,"xmax":13389474.24471086,"ymax":-286485.98201283434,"spatialReference":{"wkid":102100}}
-				,"name": "Mamasa" 
-			}
-			];
-
-			var bookmarks_landscape = [{
-			  "extent":  {"xmin":11326477.06980866,"ymin":-297187.16597275843,"xmax":11378683.560127364,"ymax":-273415.25017610064,"spatialReference":{"wkid":102100}}
-			  ,"name": "Sungai Tenang" 
-			}];
-			
-			// Create the bookmark widget
-			bookmarks = new esri.dijit.Bookmarks({
-			  map: map, 
-			  bookmarks: bookmarks_list
-			}, dojo.byId('bookmarks'));
-			
-			bookmarksLandscape = new esri.dijit.Bookmarks({
-			  map: map, 
-			  bookmarks: bookmarks_landscape
-			}, dojo.byId('bookmarksLandscape'));
 		}
       });
