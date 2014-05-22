@@ -1,0 +1,1 @@
+http://117.54.11.70:6080/arcgis/rest/services/mcai/Modeldemo_merangin/MapServer/generatekml?docName=Test+Name&layers=1,2,3,4,5,29,16,18&layerOptions=separateImage
