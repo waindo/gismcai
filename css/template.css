@@ -17,17 +17,38 @@ html, body {
 }
 
 #header {
+	font-family: Arial;
+	font-size:18pt;
+	color:#336699;
 }
 
 #subHeader {
+	font-family: Arial;
+	font-size:14pt;
+	color:#D32250;	
 }
 
+#HomeButton {
+	position: absolute;
+    top: 250px;
+    right: 24px;
+	z-index: 50;
+}
+
+#rightPane {
+      width: 25%;
+    }
+
+    #legendPane {
+      border: solid #97DCF2 1px;
+    }
+
 #map {
-	height: 470px;
+	height: 525px;
 }
 
 #basemapGalleryDiv {
-	width:380px; 
+	width:240px; 
 	height:280px;
 }
 
