@@ -1,5 +1,5 @@
 var app = {}, map, toc, dynaLayer1, dynaLayer2, featLayer1;
-var legendCarbonProject = [], legendClimate = [], legendEcology = [], legendEnergy = [];
+var legendAgriculture = [], legendCarbonProject = [], legendClimate = [], legendEcology = [], legendEnergy = [];
 var legendForestry = [], legendHazardVunerabillity = [], legendHotspot = [], legendHydrology = [];
 var legendInfrastructure = [], legendLandcover = [], legendLandDegradation = [], legendMining = [];
 var legendPermits = [], legendLanduseSpatialPlan = [], legendSocioEconomic = [], legendSoil = [];
@@ -103,15 +103,17 @@ require([
 		//event when user content pane
 		on(dom.byId("HomeButton"), "click", fHomeButton);
 		
+		/*
 		on(dom.byId("radioProvince"), "click", fRadioProvince);
 		on(dom.byId("radioDistrict"), "click", fRadioDistrict);
 		on(dom.byId("radioLandscape"), "click", fRadioLandscape);
+		*/
 		
 		on(dom.byId("radioProvinceZT"), "click", fRadioProvinceZT);
 		on(dom.byId("radioDistrictZT"), "click", fRadioDistrictZT);
 		on(dom.byId("radioLandscapeZT"), "click", fRadioLandscapeZT);
 		
-		on(dom.byId("processButton"), "click", fProcess);
+		//on(dom.byId("processButton"), "click", fProcess);
 		on(dom.byId("zoomToButton"), "click", fZoomTo);
 		
 	//------------------------
@@ -129,143 +131,40 @@ require([
 	}
 
 	function fLoadAllLayers() {
-		indonesiaBackgroundLayer = new ArcGISDynamicMapServiceLayer("http://localhost:6080/arcgis/rest/services/MCA_I/Indonesia_Background/MapServer", {
-		});
-		indonesiaLayer = new ArcGISDynamicMapServiceLayer("http://117.54.11.70:6080/arcgis/rest/services/mcai/Modeldemo_indonesia/MapServer", {
-		});
-		mcaiLayer = new ArcGISDynamicMapServiceLayer("http://117.54.11.70:6080/arcgis/rest/services/mcai/Modeldemo_indonesia/MapServer", {
-		});
-		legendLayers.push({ layer: mcaiLayer, title: 'MCA - Indonesia' });
-		provinceLayer = new ArcGISDynamicMapServiceLayer("http://localhost:6080/arcgis/rest/services/MCA_I/Province/MapServer", {
-		});
-		districtLayer = new ArcGISDynamicMapServiceLayer("http://localhost:6080/arcgis/rest/services/MCA_I/District/MapServer", {
-		});
+		var iMapServicesFolder = "http://localhost:6080/arcgis/rest/services/mcai/";
+		var iFeatureFolder = iMapServicesFolder + "Indonesia/MapServer/";
 		
-		subDistrictMeranginFeatureLayer = new FeatureLayer("http://117.54.11.70:6080/arcgis/rest/services/mcai/Modeldemo_merangin/MapServer/4", {
+		indonesiaBackgroundLayer = new ArcGISDynamicMapServiceLayer(iMapServicesFolder + "Indonesia/MapServer", {});
+		indonesiaLayer = new ArcGISDynamicMapServiceLayer(iMapServicesFolder + "Indonesia/MapServer", {});
+		mcaiLayer = new ArcGISDynamicMapServiceLayer(iMapServicesFolder + "Indonesia/MapServer", {});		
+		provinceLayer = new ArcGISDynamicMapServiceLayer(iMapServicesFolder + "Indonesia/MapServer", {});
+		districtLayer = new ArcGISDynamicMapServiceLayer(iMapServicesFolder + "Indonesia/MapServer", {});
+		
+		subDistrictMeranginFeatureLayer = new FeatureLayer(iMapServicesFolder + "Indonesia/MapServer/100", {
 			mode: FeatureLayer.MODE_SNAPSHOT,
 			opacity: 0,
 			outFields: ["*"]
 		});
 		
-		landscapeLayer = new ArcGISDynamicMapServiceLayer("http://localhost:6080/arcgis/rest/services/MCA_I/Landscape/MapServer", {
-		//landscapeLayer = new ArcGISDynamicMapServiceLayer("http://117.54.11.70:6080/arcgis/rest/services/mcai/Modeldemo_Landscape_analysis/MapServer", {
+		//landscapeLayer = new ArcGISDynamicMapServiceLayer(iMapServicesFolder + "Indonesia/MapServer", {
+		landscapeLayer = new ArcGISDynamicMapServiceLayer("http://117.54.11.70:6080/arcgis/rest/services/mcai/Modeldemo_Landscape_analysis/MapServer", {
 		});
 		
-		console.log("load service layer success");
-		
 		//add for category analysis layers
-		var iFeatureFolder = "http://localhost:6080/arcgis/rest/services/MCA_I/Province/MapServer/";
-		
 		//----- agriculture group -----
-		argoEcologyZoneLayer = new FeatureLayer(iFeatureFolder + "8", {
-          id: '8'
-        });
-		legendLayers.push({ layer: argoEcologyZoneLayer, title: 'Argo Ecology Zone' });
-		cropLandAgricultureLayer = new FeatureLayer(iFeatureFolder + "9", {
-          id: '9'
-        });
-		legendLayers.push({ layer: cropLandAgricultureLayer, title: 'Cropland Agriculture' });
-		fishingAreaLayer = new FeatureLayer(iFeatureFolder + "10", {
-          id: '10'
-        });
-		legendLayers.push({ layer: fishingAreaLayer, title: 'Fishing Area' });
-		paddyFieldLayer = new FeatureLayer(iFeatureFolder + "11", {
-          id: '11'
-        });
-		legendLayers.push({ layer: paddyFieldLayer, title: 'Paddy Field' });
-		sugarCaneLayer = new FeatureLayer(iFeatureFolder + "12", {
-          id: '12'
-        });
-		legendLayers.push({ layer: sugarCaneLayer, title: 'Sugar Cane' });
-		plantationConcessionLayer = new FeatureLayer(iFeatureFolder + "13", {
-          id: '13'
-        });
-		legendLayers.push({ layer: plantationConcessionLayer, title: 'Plantation Concession' });
-		console.log("load feature layer - agriculture success");
+		sugarcaneLayer = new FeatureLayer(iFeatureFolder + "16", {});
+		legendAgriculture.push({ layer: sugarcaneLayer, title: 'Sugarcane' });
+		plantationLayer = new FeatureLayer(iFeatureFolder + "15", {});
+		legendAgriculture.push({ layer: plantationLayer, title: 'Plantation' });
+		paddyFieldLayer = new FeatureLayer(iFeatureFolder + "14", {});
+		legendAgriculture.push({ layer: paddyFieldLayer, title: 'Paddy Field' });
+		fishingLayer = new FeatureLayer(iFeatureFolder + "13", {});
+		legendAgriculture.push({ layer: fishingLayer, title: 'Fishing' });
+		ecologyLayer = new FeatureLayer(iFeatureFolder + "12", {});
+		legendAgriculture.push({ layer: ecologyLayer, title: 'Ecology' });
+		cropLandLayer = new FeatureLayer(iFeatureFolder + "11", {});
+		legendAgriculture.push({ layer: cropLandLayer, title: 'Cropland' });
 		
-		//----- carbon project -----
-		carbonMeasurementPointLayer = new FeatureLayer(iFeatureFolder + "15", {
-          id: '15'
-        });
-		legendCarbonProject.push({ layer: carbonMeasurementPointLayer, title: 'Carbon Measurement Point' });
-		permanentForestPlotsLayer = new FeatureLayer(iFeatureFolder + "16", {
-          id: '16'
-        });
-		legendCarbonProject.push({ layer: permanentForestPlotsLayer, title: 'Permanent Forest Plots' });
-		samplingLocationLayer = new FeatureLayer(iFeatureFolder + "17", {
-          id: '17'
-        });
-		legendCarbonProject.push({ layer: samplingLocationLayer, title: 'Sampling Location' });
-		npCarbonInitiativeLayer = new FeatureLayer(iFeatureFolder + "18", {
-          id: '18'
-        });
-		legendCarbonProject.push({ layer: npCarbonInitiativeLayer, title: 'NP Carbon Initiative' });
-		carbonStockMoFLayer = new FeatureLayer(iFeatureFolder + "19", {
-          id: '19'
-        });
-		legendCarbonProject.push({ layer: carbonStockMoFLayer, title: 'Carbon Stock MoF' });
-		climateAndLanduseAllianceLayer = new FeatureLayer(iFeatureFolder + "20", {
-          id: '20'
-        });
-		legendCarbonProject.push({ layer: climateAndLanduseAllianceLayer, title: 'Climate and Landuse Alliance' });
-		console.log("load feature layer - carbon success");
-		
-		//----- climate -----
-		rainFallsLayer = new FeatureLayer(iFeatureFolder + "22", {id: '22'});
-		legendClimate.push({ layer: rainFallsLayer, title: 'Rain Falls' });
-		console.log("load feature layer - climate success");
-		
-		//----- ecology -----
-		ecologyRegionLayer = new FeatureLayer(iFeatureFolder + "24", {id: '24'});
-		legendEcology.push({ layer: ecologyRegionLayer, title: 'Ecology Region' });
-		//climateAndLanduseAllianceLayer = new FeatureLayer(iFeatureFolder + "20", {id: '20'});
-		//legendCarbonProject.push({ layer: climateAndLanduseAllianceLayer, title: 'Climate and Landuse Alliance' });
-		tigerDistributionLayer = new FeatureLayer(iFeatureFolder + "26", {id: '26'});
-		legendEcology.push({ layer: tigerDistributionLayer, title: 'Tiger Distribution' });
-		elephanDistributionLayer = new FeatureLayer(iFeatureFolder + "27", {id: '27'});
-		legendEcology.push({ layer: elephanDistributionLayer, title: 'Elephan Distribution' });
-		hvc11Layer = new FeatureLayer(iFeatureFolder + "28", {id: '28'});
-		legendEcology.push({ layer: hvc11Layer, title: 'HVC 1 1' });
-		hvc12Layer = new FeatureLayer(iFeatureFolder + "29", {id: '29'});
-		legendEcology.push({ layer: hvc12Layer, title: 'HVC 1 2' });
-		hvc2Layer = new FeatureLayer(iFeatureFolder + "30", {id: '30'});
-		legendEcology.push({ layer: hvc2Layer, title: 'HVC 2' });
-		hvc3Layer = new FeatureLayer(iFeatureFolder + "31", {id: '31'});
-		legendEcology.push({ layer: hvc3Layer, title: 'HVC 3' });
-		//climateAndLanduseAllianceLayer = new FeatureLayer(iFeatureFolder + "20", {id: '20'});
-		//legendCarbonProject.push({ layer: climateAndLanduseAllianceLayer, title: 'Climate and Landuse Alliance' });
-		importantEcoSystemLayer = new FeatureLayer(iFeatureFolder + "33", {id: '33'});
-		legendEcology.push({ layer: importantEcoSystemLayer, title: 'Important Ecosystem' });
-		bioDiversityTigerTNKSLayer = new FeatureLayer(iFeatureFolder + "34", {id: '34'});
-		legendEcology.push({ layer: bioDiversityTigerTNKSLayer, title: 'Bio Diversity Tiger TNKS' });
-		console.log("load feature layer - ecology success");
-		
-		//----- forestry -----
-		forestLandStatusLayer = new FeatureLayer(iFeatureFolder + "38", {id: '38'});
-		legendForestry.push({ layer: forestLandStatusLayer, title: 'Forestery Land Status' });
-		PPIBLayer = new FeatureLayer(iFeatureFolder + "39", {id: '39'});
-		legendForestry.push({ layer: PPIBLayer, title: 'PPIB' });
-		peatLayer = new FeatureLayer(iFeatureFolder + "40", {id: '40'});
-		legendForestry.push({ layer: peatLayer, title: 'Peat' });
-		forestConservationLayer = new FeatureLayer(iFeatureFolder + "41", {id: '41'});
-		legendForestry.push({ layer: forestConservationLayer, title: 'Forest Conservation' });
-		forestManagementUnitLayer = new FeatureLayer(iFeatureFolder + "42", {id: '42'});
-		legendForestry.push({ layer: forestManagementUnitLayer, title: 'Forest Management Unit' });
-		hphtiLayer = new FeatureLayer(iFeatureFolder + "43", {id: '43'});
-		legendForestry.push({ layer: hphtiLayer, title: 'HPHTI' });
-		rimbaCorridorLayer = new FeatureLayer(iFeatureFolder + "44", {id: '44'});
-		legendForestry.push({ layer: rimbaCorridorLayer, title: 'Rimba Corridor' });
-		villageForestLayer = new FeatureLayer(iFeatureFolder + "45", {id: '45'});
-		legendForestry.push({ layer: villageForestLayer, title: 'Village Forest' });
-		tenurialForestLayer = new FeatureLayer(iFeatureFolder + "46", {id: '46'});
-		legendForestry.push({ layer: tenurialForestLayer, title: 'Tenurial Forest' });
-		forestryForestCoverLayer = new FeatureLayer(iFeatureFolder + "47", {id: '47'});
-		legendForestry.push({ layer: forestryForestCoverLayer, title: 'Forestery Forest Cover' });
-		console.log("load feature layer - forestry success");
-		
-		
-		
-		//indonesiaLayer, 
 		map.addLayers([
 			indonesiaBackgroundLayer, 
 			mcaiLayer, 	
@@ -274,53 +173,28 @@ require([
 				subDistrictMeranginFeatureLayer,
 				landscapeLayer,
 				
-			argoEcologyZoneLayer, cropLandAgricultureLayer, fishingAreaLayer, paddyFieldLayer, sugarCaneLayer, plantationConcessionLayer,
-			carbonMeasurementPointLayer, permanentForestPlotsLayer, samplingLocationLayer, npCarbonInitiativeLayer, carbonStockMoFLayer, climateAndLanduseAllianceLayer,
-			rainFallsLayer,
-			ecologyRegionLayer, tigerDistributionLayer, elephanDistributionLayer, hvc11Layer, hvc12Layer, hvc2Layer, hvc3Layer, importantEcoSystemLayer, bioDiversityTigerTNKSLayer,
-			forestLandStatusLayer, PPIBLayer, peatLayer, forestConservationLayer, forestManagementUnitLayer, hphtiLayer, rimbaCorridorLayer, villageForestLayer, tenurialForestLayer, forestryForestCoverLayer, 
+			//agriculture group layers
+			cropLandLayer, ecologyLayer, fishingLayer, paddyFieldLayer, plantationLayer, sugarcaneLayer, 
 		]);
+		
+		console.log("load service layer success");
 	}
 	
 	function fSetLegend() {
 		map.on('layers-add-result', function () {
-		var legend = new Legend({
+		var legendGeneral = new Legend({
             map: map,
             layerInfos: legendLayers
           }, "legendDiv");
-          legend.startup();
-        }); 
-		
-		map.on('layers-add-result', function () {
-		var legendCarbonProject = new Legend({
-            map: map,
-            layerInfos: legendCarbonProject
-          }, "legendCarbonProjectDiv");
-          legendCarbonProject.startup();
+          legendGeneral.startup();
         });
 		
 		map.on('layers-add-result', function () {
-		var legendClimate = new Legend({
+		var legenda = new Legend({
             map: map,
-            layerInfos: legendClimate
-          }, "legendClimateDiv");
-          legendClimate.startup();
-        });
-		
-		map.on('layers-add-result', function () {
-		var legendEcology = new Legend({
-            map: map,
-            layerInfos: legendEcology
-          }, "legendEcologyDiv");
-          legendEcology.startup();
-        });
-		
-		map.on('layers-add-result', function () {
-		var legendForestry = new Legend({
-            map: map,
-            layerInfos: legendForestry
-          }, "legendForestryDiv");
-          legendForestry.startup();
+            layerInfos: legendAgriculture
+          }, "legendAgricultureDiv");
+          legenda.startup();
         });
 	}
 	
@@ -342,7 +216,7 @@ require([
             });
 
             //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggle"), "after");
+            domConstruct.place(checkBox.domNode, dom.byId("toggleGeneral"), "after");
             var checkLabel = domConstruct.create('label', {
                 'for': checkBox.name,
                 innerHTML: layerName
@@ -351,10 +225,10 @@ require([
           });
         });
 		
-		//----- carbon project -----
+		//----- agriculture -----
 		map.on('layers-add-result', function () {
           //add check boxes
-          arrayUtils.forEach(legendCarbonProject, function (layer) {
+          arrayUtils.forEach(legendAgriculture, function (layer) {
             var layerName = layer.title;
             var checkBox = new CheckBox({
               name: "checkBox" + layer.layer.id,
@@ -368,7 +242,7 @@ require([
             });
 
             //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleCarbonProject"), "after");
+            domConstruct.place(checkBox.domNode, dom.byId("toggleAgriculture"), "after");
             var checkLabel = domConstruct.create('label', {
                 'for': checkBox.name,
                 innerHTML: layerName
@@ -376,86 +250,6 @@ require([
             domConstruct.place("<br />", checkLabel, "after");
           });
         });
-		
-		//----- climate -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendClimate, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleClimate"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- ecology -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendEcology, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleEcology"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- forestry -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendForestry, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleForestry"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		
 	}
 	
 	function fHomeButton() {
@@ -485,11 +279,8 @@ require([
 	}
 	
 	function fHideAllFeatureLayers() {
-		argoEcologyZoneLayer.hide(); cropLandAgricultureLayer.hide(); fishingAreaLayer.hide(); paddyFieldLayer.hide(); sugarCaneLayer.hide(); plantationConcessionLayer.hide();
-		carbonMeasurementPointLayer.hide(); permanentForestPlotsLayer.hide(); samplingLocationLayer.hide(); npCarbonInitiativeLayer.hide(); carbonStockMoFLayer.hide(); climateAndLanduseAllianceLayer.hide();
-		rainFallsLayer.hide();
-		ecologyRegionLayer.hide();  tigerDistributionLayer.hide();  elephanDistributionLayer.hide();  hvc11Layer.hide();  hvc12Layer.hide();  hvc2Layer.hide();  hvc3Layer.hide();  importantEcoSystemLayer.hide();  bioDiversityTigerTNKSLayer.hide(); 		
-		forestLandStatusLayer.hide();  PPIBLayer.hide();  peatLayer.hide();  forestConservationLayer.hide();  forestManagementUnitLayer.hide();  hphtiLayer.hide();  rimbaCorridorLayer.hide();  villageForestLayer.hide();  tenurialForestLayer.hide();  forestryForestCoverLayer.hide();  
+		//agriculture group layers
+			cropLandLayer, ecologyLayer, fishingLayer, paddyFieldLayer, plantationLayer, sugarcaneLayer
 	}
 	
 	function fLoadWidgets() {
@@ -889,6 +680,7 @@ require([
 	}
 
 	function fZoomTo() {
+		
 		var iArea, iSelectArea, iSelectAnalysis;
 		
 		if (dom.byId("radioProvinceZT").checked && dijit.byId("provinceSelectZT").get("value") != "-----" ) {
