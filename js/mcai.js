@@ -5,7 +5,7 @@ var legendInfrastructure = [], legendLandcover = [], legendLandDegradation = [],
 var legendPermits = [], legendLanduseSpatialPlan = [], legendSocioEconomic = [], legendSoil = [];
 var legendLayers = [], legendTopography = [], legendRainFalls = [];
 
-var iHasil = "";
+var iAlamatLokal = "localhost";
 
 require([
 	"esri/map",
@@ -133,7 +133,7 @@ require([
 	}
 
 	function fLoadAllLayers() {
-		var iMapServicesFolder = "http://192.168.0.213:6080/arcgis/rest/services/mcai/";
+		var iMapServicesFolder = "http://" + iAlamatLokal + ":6080/arcgis/rest/services/mcai/";
 		var iFeatureFolder = iMapServicesFolder + "Indonesia/MapServer/";
 		
 		indonesiaBackgroundLayer = new FeatureLayer(iMapServicesFolder + "mca_indonesia/MapServer/4", {}); //new ArcGISDynamicMapServiceLayer(iMapServicesFolder + "Indonesia/MapServer", {});
@@ -145,28 +145,67 @@ require([
 		 var infoTemplate = new InfoTemplate();
           infoTemplate.setTitle("Information");
           //infoTemplate.setContent("
+		
+		var infoTemplateDetail = new InfoTemplate();
+          infoTemplateDetail.setTitle("Information");
+		  infoTemplateDetail.setContent(
+		"<table border=0 width=100%>" +
+			"<tr>" + 
+				"<td valign=top width=74><font face=Arial size=2>DISTRICT</font></td>" +
+				" <td><font face=Arial size=2>: ${KABKOT}</font></td>" +
+			"</tr>" +
+			"<tr>" +
+				"<td valign=top width=74><font face=Arial size=2>SUB DISTRICT</font></td>" +
+				"<td><font face=Arial size=2>: ${KECAMATAN}</font></td>" +
+			"</tr>" +
+			"<tr>" +
+				"<td valign=top width=74><font face=Arial size=2>VILLAGE</font></td>" +
+				"<td><font face=Arial size=2>: ${DESA}</font></td>" +
+			"</tr>" +
+			"<tr>" +
+				"<td colspan=2><font face=Arial size=2>${DESA:getFile}</font></td>" +
+			"</tr>" +
+		"</table>" 
+		);
+		getFile = function(value, key, data) {
+			var result = ""
+			
+			switch(key) {
+				case "DESA": 
+					if (data.DESA == "RANTAU SULI") {
+						result = "<a href=http://" + iAlamatLokal + "/mcai_dev/detail/Intervention.htm target=_blank " ;
+						result = result + "onclick = window.open('','More Detail',";
+						result = result + "'toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes,width=500px,height=300px');return false";
+						result = result + "><i>More Detail</i></a>";
+					}					
+					break;
+			}
+			console.log(result);
+			return result
+
+		}
 		  
-		mcaiGP = new FeatureLayer(iMapServicesFolder + "mca_indonesia/MapServer/3", {});
-		legendLayers.push({ layer: mcaiGP, title: 'Green Prosperity Project' });
+		villageFeatureLayer = new FeatureLayer(iMapServicesFolder + "Indonesia/MapServer/9", {
+			mode: FeatureLayer.MODE_SNAPSHOT,
+			infoTemplate: infoTemplateDetail,
+			outFields: ["*"]
+		});
+		legendLayers.push({ layer: villageFeatureLayer, title: 'Village' });
+		subDistrictFeatureLayer = new FeatureLayer(iMapServicesFolder + "Indonesia/MapServer/8", {
+			mode: FeatureLayer.MODE_SNAPSHOT,
+			infoTemplate: infoTemplate,
+			outFields: ["*"]
+		});
+		legendLayers.push({ layer: subDistrictFeatureLayer, title: 'Sub District' });
+		
 		mcaiH = new FeatureLayer(iMapServicesFolder + "mca_indonesia/MapServer/1", {});
 		legendLayers.push({ layer: mcaiH, title: 'Community-based Health and Nutrition to Reduce Stunting Project' });
 		mcaiPM = new FeatureLayer(iMapServicesFolder + "mca_indonesia/MapServer/2", {});
 		legendLayers.push({ layer: mcaiPM, title: 'Procurement Modernization Project' });
+		mcaiGP = new FeatureLayer(iMapServicesFolder + "mca_indonesia/MapServer/3", {});
+		legendLayers.push({ layer: mcaiGP, title: 'Green Prosperity Project' });
 		
-		subDistrictFeatureLayer = new FeatureLayer(iMapServicesFolder + "Indonesia/MapServer/8", {
-			mode: FeatureLayer.MODE_SNAPSHOT,
-			infoTemplate: infoTemplate,
-			opacity: 0,
-			outFields: ["*"]
-		});
-		legendLayers.push({ layer: subDistrictFeatureLayer, title: 'Sub District' });
-		villageFeatureLayer = new FeatureLayer(iMapServicesFolder + "Indonesia/MapServer/8", {
-			mode: FeatureLayer.MODE_SNAPSHOT,
-			infoTemplate: infoTemplate,
-			opacity: 0,
-			outFields: ["*"]
-		});
-		legendLayers.push({ layer: villageFeatureLayer, title: 'Village' });
+		
 		
 		landscapeFeatureLayer = new FeatureLayer(iMapServicesFolder + "Indonesia/MapServer/207", {
 			mode: FeatureLayer.MODE_SNAPSHOT,
@@ -180,7 +219,7 @@ require([
 		sugarcaneLayer = new FeatureLayer(iFeatureFolder + "16", {id:"16"});
 		legendAgriculture.push({ layer: sugarcaneLayer, title: 'Sugarcane' });
 		plantationLayer = new FeatureLayer(iFeatureFolder + "15", {id:"15", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
-		legendAgriculture.push({ layer: plantationLayer, title: 'Plantation' });
+		legendAgriculture.push({ layer: plantationLayer, title: 'Plantation Concession' });
 		paddyFieldLayer = new FeatureLayer(iFeatureFolder + "14", {id:"14"});
 		legendAgriculture.push({ layer: paddyFieldLayer, title: 'Paddy Field' });
 		fishingLayer = new FeatureLayer(iFeatureFolder + "13", {id:"13"});
@@ -192,15 +231,15 @@ require([
 		
 		//----- carbon project -----
 		lyr23 = new FeatureLayer(iFeatureFolder + "23", {id:"23"});
-		legendCarbonProject.push({ layer: lyr23, title: 'Sampling Location' });
+		legendCarbonProject.push({ layer: lyr23, title: 'Sampling Location (ICRAF)' });
 		lyr22 = new FeatureLayer(iFeatureFolder + "22", {id:"22"});
-		legendCarbonProject.push({ layer: lyr22, title: 'Permanent Forest' });
-		lyr21 = new FeatureLayer(iFeatureFolder + "21", {id:"21"});
-		legendCarbonProject.push({ layer: lyr21, title: 'Climate and Land Use Alliance' });
+		legendCarbonProject.push({ layer: lyr22, title: 'Permanent Forest Plots (ZSL)' });
+		//lyr21 = new FeatureLayer(iFeatureFolder + "21", {id:"21"});
+		//legendCarbonProject.push({ layer: lyr21, title: 'Climate and Land Use Alliance' });
 		lyr20 = new FeatureLayer(iFeatureFolder + "20", {id:"20"});
-		legendCarbonProject.push({ layer: lyr20, title: 'Carbon Stock' });
+		legendCarbonProject.push({ layer: lyr20, title: 'Carbon Stock (MoF)' });
 		lyr19 = new FeatureLayer(iFeatureFolder + "19", {id:"19"});
-		legendCarbonProject.push({ layer: lyr19, title: 'Carbon Measurement' });
+		legendCarbonProject.push({ layer: lyr19, title: 'Carbon Measurement Points (ZSL)' });
 		lyr18 = new FeatureLayer(iFeatureFolder + "18", {id:"18"});
 		legendCarbonProject.push({ layer: lyr18, title: 'Berbak NP Carbon Initiative' });
 		
@@ -214,19 +253,19 @@ require([
 		lyr34 = new FeatureLayer(iFeatureFolder + "34", {id:"34", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
 		legendEcology.push({ layer: lyr34, title: 'Important Ecosystem' });
 		lyr33 = new FeatureLayer(iFeatureFolder + "33", {id:"33"});
-		legendEcology.push({ layer: lyr33, title: 'HCV 3' });
+		legendEcology.push({ layer: lyr33, title: 'HCV 3 – Endangered Ecosystem' });
 		lyr32 = new FeatureLayer(iFeatureFolder + "32", {id:"32"});
-		legendEcology.push({ layer: lyr32, title: 'HCV 2' });
+		legendEcology.push({ layer: lyr32, title: 'HCV 2 – Important Natural Landscapes' });
 		lyr31 = new FeatureLayer(iFeatureFolder + "31", {id:"31"});
-		legendEcology.push({ layer: lyr31, title: 'HCV 1 2' });
+		legendEcology.push({ layer: lyr31, title: 'HCV 1.2 - Threatened and Endangered Species (WWF)' });
 		lyr30 = new FeatureLayer(iFeatureFolder + "30", {id:"30"});
-		legendEcology.push({ layer: lyr30, title: 'HCV 1 1' });
+		legendEcology.push({ layer: lyr30, title: 'HCV 1.1 - Wild Plant Sanctuaries (WWF)' });
 		lyr29 = new FeatureLayer(iFeatureFolder + "29", {id:"29"});
 		legendEcology.push({ layer: lyr29, title: 'Elephant Distribution' });
 		lyr28 = new FeatureLayer(iFeatureFolder + "28", {id:"28", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
-		legendEcology.push({ layer: lyr28, title: 'Ecoregions' });
-		lyr27 = new FeatureLayer(iFeatureFolder + "27", {id:"27"});
-		legendEcology.push({ layer: lyr27, title: 'Biodiversity Tiger TNKS' });
+		legendEcology.push({ layer: lyr28, title: 'Ecoregion (WWF)' });
+		//lyr27 = new FeatureLayer(iFeatureFolder + "27", {id:"27"});
+		//legendEcology.push({ layer: lyr27, title: 'Biodiversity Tiger TNKS' });
 		
 		//----- energy -----
 		lyr37 = new FeatureLayer(iFeatureFolder + "37", {id:"37"});
@@ -234,23 +273,23 @@ require([
 		
 		//----- forestry -----
 		lyr47 = new FeatureLayer(iFeatureFolder + "47", {id:"47", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
-		legendForestry.push({ layer: lyr47, title: 'Forestry Forest Cover' });
+		legendForestry.push({ layer: lyr47, title: 'Existing Forest Cover' });
 		lyr46 = new FeatureLayer(iFeatureFolder + "46", {id:"46", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
-		legendForestry.push({ layer: lyr46, title: 'Tenurial Forest Alliance' });
+		legendForestry.push({ layer: lyr46, title: 'Tenurial Forest' });
 		lyr45 = new FeatureLayer(iFeatureFolder + "45", {id:"45", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
 		legendForestry.push({ layer: lyr45, title: 'Village Forest' });
 		lyr44 = new FeatureLayer(iFeatureFolder + "44", {id:"44", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
 		legendForestry.push({ layer: lyr44, title: 'Rimba Corridor' });
-		lyr43 = new FeatureLayer(iFeatureFolder + "43", {id:"43", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
-		legendForestry.push({ layer: lyr43, title: 'HPHTI' });
+		//lyr43 = new FeatureLayer(iFeatureFolder + "43", {id:"43", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		//legendForestry.push({ layer: lyr43, title: 'HPHTI' });
 		lyr42 = new FeatureLayer(iFeatureFolder + "42", {id:"42", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
 		legendForestry.push({ layer: lyr42, title: 'Forest Management Unit' });
 		lyr41 = new FeatureLayer(iFeatureFolder + "41", {id:"41", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
-		legendForestry.push({ layer: lyr41, title: 'Forest Conservatioan Alliance' });
+		legendForestry.push({ layer: lyr41, title: 'Forest Conservation Activities' });
 		lyr40 = new FeatureLayer(iFeatureFolder + "40", {id:"40", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
-		legendForestry.push({ layer: lyr40, title: 'PPIB' });
+		legendForestry.push({ layer: lyr40, title: 'Forest Production Moratorium' });
 		lyr39 = new FeatureLayer(iFeatureFolder + "39", {id:"39", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
-		legendForestry.push({ layer: lyr39, title: 'Forest Land Status' });
+		legendForestry.push({ layer: lyr39, title: 'Forest Status' });
 		/*
 		//----- hazard vulnerability -----
 		lyr52 = new FeatureLayer(iFeatureFolder + "52", {id:"52", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
@@ -264,29 +303,29 @@ require([
 		*/
 		//----- hotspot -----
 		lyr57 = new FeatureLayer(iFeatureFolder + "57", {id:"57"});
-		legendHotspot.push({ layer: lyr57, title: 'Hotspot USGS' });
+		legendHotspot.push({ layer: lyr57, title: 'Hotspot Distribution (2012)' });
 		
 		//----- hydrology -----
 		lyr62 = new FeatureLayer(iFeatureFolder + "62", {id:"62"});
 		legendHydrology.push({ layer: lyr62, title: 'Watershed Boundary' });
 		lyr61 = new FeatureLayer(iFeatureFolder + "61", {id:"61"});
-		legendHydrology.push({ layer: lyr61, title: 'River Small' });
+		legendHydrology.push({ layer: lyr61, title: 'River' });
 		lyr60 = new FeatureLayer(iFeatureFolder + "60", {id:"60"});
-		legendHydrology.push({ layer: lyr60, title: 'River Big' });
+		legendHydrology.push({ layer: lyr60, title: 'Main River' });
 		
 		//----- Infrastructure -----
 		lyr65 = new FeatureLayer(iFeatureFolder + "65", {id:"65"});
 		legendInfrastructure.push({ layer: lyr65, title: 'Other Road' });
 		lyr64 = new FeatureLayer(iFeatureFolder + "64", {id:"64"});
-		legendInfrastructure.push({ layer: lyr64, title: 'SubDistrict Road' });
+		legendInfrastructure.push({ layer: lyr64, title: 'Main Road' });
 		
 		//----- Landcover -----
 		lyr68 = new FeatureLayer(iFeatureFolder + "68", {id:"68", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
-		legendLandcover.push({ layer: lyr68, title: 'Landcover' });
+		legendLandcover.push({ layer: lyr68, title: 'Landcover 2011 (MoF)' });
 		
 		//----- land degradation -----
-		lyr71 = new FeatureLayer(iFeatureFolder + "71", {id:"71", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
-		legendLandDegradation.push({ layer: lyr71, title: 'Gerhan' });
+		//lyr71 = new FeatureLayer(iFeatureFolder + "71", {id:"71", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		//legendLandDegradation.push({ layer: lyr71, title: 'Gerhan' });
 		lyr70 = new FeatureLayer(iFeatureFolder + "70", {id:"70", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
 		legendLandDegradation.push({ layer: lyr70, title: 'Critical Land' });
 		
@@ -298,35 +337,35 @@ require([
 		lyr76 = new FeatureLayer(iFeatureFolder + "76", {id:"76", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
 		legendMining.push({ layer: lyr76, title: 'Oil and Gas Cocenssion' });
 		lyr75 = new FeatureLayer(iFeatureFolder + "75", {id:"75", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
-		legendMining.push({ layer: lyr70, title: 'Mining Concession' });
+		legendMining.push({ layer: lyr75, title: 'Mining Concession' });
 		
 		//----- permits -----
 		lyr85 = new FeatureLayer(iFeatureFolder + "85", {id:"85", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
-		legendPermits.push({ layer: lyr85, title: 'IUPHHK RE' });
+		legendPermits.push({ layer: lyr85, title: 'Permit to Utilize Forest Product in Ecological Restoration' });
 		lyr84 = new FeatureLayer(iFeatureFolder + "84", {id:"84", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
-		legendPermits.push({ layer: lyr84, title: 'IUPHHK HTR' });
+		legendPermits.push({ layer: lyr84, title: 'Permit to Utilize Forest Product in Community Timber Estate' });
 		lyr83 = new FeatureLayer(iFeatureFolder + "83", {id:"83", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
-		legendPermits.push({ layer: lyr83, title: 'IUPHHK HTI' });
+		legendPermits.push({ layer: lyr83, title: 'Permit to Utilize Forest Product in Timber Estate' });
 		lyr82 = new FeatureLayer(iFeatureFolder + "82", {id:"82", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
-		legendPermits.push({ layer: lyr82, title: 'IUPHHK HA' });
+		legendPermits.push({ layer: lyr82, title: 'Permit to Utilize Forest Product in Natural Forest' });
 		lyr81 = new FeatureLayer(iFeatureFolder + "81", {id:"81", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
-		legendPermits.push({ layer: lyr81, title: 'HGU' });
+		legendPermits.push({ layer: lyr81, title: 'Land Cultivation Right (HGU)' });
 		lyr80 = new FeatureLayer(iFeatureFolder + "80", {id:"80", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
-		legendPermits.push({ layer: lyr80, title: 'Forest Land Swap IPPKH' });
+		legendPermits.push({ layer: lyr80, title: 'Forest Land Swap (IPPKH)' });
 		lyr79 = new FeatureLayer(iFeatureFolder + "79", {id:"79", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
-		legendPermits.push({ layer: lyr79, title: 'Forest Area Release Plantation' });
+		legendPermits.push({ layer: lyr79, title: 'Forest Conversion to Plantation Development' });
 		lyr78 = new FeatureLayer(iFeatureFolder + "78", {id:"78", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
-		legendPermits.push({ layer: lyr78, title: 'Forest Area Release' });
+		legendPermits.push({ layer: lyr78, title: 'Forest Conversion to Transmigration Development' });
 		
 		//----- socio economic -----
 		lyr88 = new FeatureLayer(iFeatureFolder + "88", {id:"88", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
-		legendSocioEconomic.push({ layer: lyr88, title: 'Distribution of The Population' });
+		legendSocioEconomic.push({ layer: lyr88, title: 'Population Distribution' });
 		lyr87 = new FeatureLayer(iFeatureFolder + "87", {id:"87", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
 		legendSocioEconomic.push({ layer: lyr87, title: 'Indigenous People' });
 		
 		//----- soil -----
 		lyr92 = new FeatureLayer(iFeatureFolder + "92", {id:"92", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
-		legendSoil.push({ layer: lyr92, title: 'Peat Soil BBSDLI' });
+		legendSoil.push({ layer: lyr92, title: 'Peat Soil' });
 		lyr91 = new FeatureLayer(iFeatureFolder + "91", {id:"91", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
 		legendSoil.push({ layer: lyr91, title: 'Soil' });
 		lyr90 = new FeatureLayer(iFeatureFolder + "90", {id:"90", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
@@ -334,7 +373,7 @@ require([
 		
 		//----- topography -----
 		lyr94 = new FeatureLayer(iFeatureFolder + "94", {id:"94", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
-		legendTopography.push({ layer: lyr91, title: 'Topographic Map' });
+		legendTopography.push({ layer: lyr94, title: 'Topographic Map' });
 		
 		map.addLayers([
 			indonesiaBackgroundLayer, 
@@ -344,20 +383,23 @@ require([
 			mcaiGP, mcaiH, mcaiPM,
 				subDistrictFeatureLayer,
 				villageFeatureLayer,
-				landscapeFeatureLayer,
+				//landscapeFeatureLayer,
 				
 			//agriculture group layers
 			cropLandLayer, ecologyLayer, fishingLayer, paddyFieldLayer, plantationLayer, sugarcaneLayer, 
 			//carbon project group layers
-			lyr18, lyr19, lyr20, lyr21, lyr22, lyr23, 
+			lyr18, lyr19, lyr20, //lyr21, 
+			lyr22, lyr23, 
 			//climate group layers
 			lyr25,
 			//ecology group layers
-			lyr27, lyr28, lyr29, lyr30, lyr31, lyr32, lyr33, lyr34, lyr35, 
+			//lyr27, 
+			lyr28, lyr29, lyr30, lyr31, lyr32, lyr33, lyr34, lyr35, 
 			//energy group layers
 			lyr37,
 			//forestry
-			lyr39, lyr40, lyr41, lyr42, lyr43, lyr44, lyr45, lyr46, lyr47,
+			lyr39, lyr40, lyr41, lyr42, //lyr43, 
+			lyr44, lyr45, lyr46, lyr47,
 			/*
 			//hazard vulnerability
 			lyr49, lyr50, lyr51, lyr52, 
@@ -371,7 +413,7 @@ require([
 			//landcover
 			lyr68, 
 			//land degradation
-			lyr70, lyr71, 
+			lyr70, //lyr71, 
 			//landuse spatial plan
 			lyr73, 
 			//mining
@@ -391,11 +433,11 @@ require([
 	
 	function fSetLegend() {
 		map.on('layers-add-result', function () {
-		var legendGeneral = new Legend({
+		var legenda = new Legend({
             map: map,
             layerInfos: legendLayers
           }, "legendDiv");
-          legendGeneral.startup();
+          legenda.startup();
         });
 		
 		//agriculture legend 
@@ -1166,7 +1208,7 @@ require([
 
 			//carbon measurement layer
 			if (i == "19" && map.getLayer(i).visible) {
-				iKet1 = "Carbon Measurement";
+				iKet1 = "Carbon Measurement Points (ZSL)";
 				
 				iKet2 = "Points showing location of carbon measurement in Berbak National Park";
 				
@@ -1177,7 +1219,7 @@ require([
 			
 			//carbon stock layer
 			if (i == "20" && map.getLayer(i).visible) {
-				iKet1 = "Carbon Stock";
+				iKet1 = "Carbon Stock (MoF)";
 				
 				iKet2 = "Carbon stock estimation, which was derived by landcover and carbon value. ";
 				iKet2 = iKet2 + "Carbon value calculated based on reference from IPCC. Scale 1:250.000";
@@ -1189,7 +1231,7 @@ require([
 			
 			//permanent forest layer
 			if (i == "22" && map.getLayer(i).visible) {
-				iKet1 = "Permanent Forest";
+				iKet1 = "Permanent Forest Plots (ZSL)";
 				iKet2 = "Points showing location of permanent forest plots in Berbak National Park";
 				iKet3 = "MoF & PTHI";
 				
@@ -1198,7 +1240,7 @@ require([
 			
 			//sampling location layer
 			if (i == "23" && map.getLayer(i).visible) {
-				iKet1 = "Sampling Location";
+				iKet1 = "Sampling Location (ICRAF)";
 				iKet2 = "Carbon measurement sampling for ALREDDI-ICRAF year 2012. ";
 				iKet2 = iKet2 + "The map derived from coordinate of sampling location.";
 				iKet3 = "ICRAF report & PTHI.";
@@ -1235,7 +1277,7 @@ require([
 			
 			//hcv 1 1 layer
 			if (i == "30" && map.getLayer(i).visible) {
-				iKet1 = "HCV 1 1";
+				iKet1 = "HCV 1.1 - Wild Plant Sanctuaries (WWF)";
 				iKet2 = "Polygon showing wild plant sanctuary area to support biodiversity.  The map was published in www.savesumatera.org.";
 				iKet3 = "WWF";
 				
@@ -1244,7 +1286,7 @@ require([
 			
 			//hcv 1 2 layer
 			if (i == "31" && map.getLayer(i).visible) {
-				iKet1 = "HCV 1 2";
+				iKet1 = "HCV 1.2 - Threatened and Endangered Species (WWF)";
 				iKet2 = "Polygon showing threatens and endangered species ecosystem. The map was published in www.savesumatera.org.";
 				iKet3 = "WWF";
 				
@@ -1253,7 +1295,7 @@ require([
 			
 			//hcv 2 layer
 			if (i == "32" && map.getLayer(i).visible) {
-				iKet1 = "HCV 2";
+				iKet1 = "HCV 2 – Important Natural Landscapes";
 				iKet2 = "Polygon showing natural landscapes, which has capacity to maintain natural ecology processes and dynamics. The map was published in www.savesumatera.org.";
 				iKet3 = "WWF";
 				
@@ -1262,7 +1304,7 @@ require([
 			
 			//hcv 3 layer
 			if (i == "33" && map.getLayer(i).visible) {
-				iKet1 = "HCV 3";
+				iKet1 = "HCV 3 – Endangered Ecosystem ";
 				iKet2 = "Polygon showing rare and endangered ecosystem. The map was published in www.savesumatera.org.";
 				iKet3 = "WWF";
 				
@@ -1271,7 +1313,7 @@ require([
 			
 			//ecoregions layer
 			if (i == "28" && map.getLayer(i).visible) {
-				iKet1 = "Ecoregions";
+				iKet1 = "Ecoregion (WWF)";
 				iKet2 = "Polygon showing econame and regions in Sumatera 1999 - 2000. The map was published in www.savesumatera.org.";
 				iKet3 = "WWF";
 				
@@ -1298,7 +1340,7 @@ require([
 			
 			//forest land status layer
 			if (i == "39" && map.getLayer(i).visible) {
-				iKet1 = "Forest Land Status";
+				iKet1 = "Forest Status";
 				iKet2 = "Polygon showing forest function (Protected Forest, Production Forest, Limited Production Forest, etc)";
 				iKet3 = "MoF";
 				
@@ -1307,7 +1349,7 @@ require([
 			
 			//ppib layer
 			if (i == "40" && map.getLayer(i).visible) {
-				iKet1 = "PPIB v.4";
+				iKet1 = "Forest Production Moratorium";
 				iKet2 = "Polygon showing forest production moratorium in Jambi.";
 				iKet3 = "MoF";
 				
@@ -1316,7 +1358,7 @@ require([
 			
 			//forest conservation alliance layer
 			if (i == "41" && map.getLayer(i).visible) {
-				iKet1 = "Forest Concession Alliance";
+				iKet1 = "Forest Concession Activities";
 				iKet2 = "Polygon showing forest conservation activities in Jambi.";
 				iKet3 = "MoF";
 				
@@ -1352,7 +1394,7 @@ require([
 			
 			//tenurial forest alliance layer
 			if (i == "46" && map.getLayer(i).visible) {
-				iKet1 = "Tenurial Forest Alliance";
+				iKet1 = "Tenurial Forest";
 				iKet2 = "Polygon showing tenurial forest.";
 				iKet3 = "MoF";
 				
@@ -1398,7 +1440,7 @@ require([
 			*/
 			//hotspot layer
 			if (i == "57" && map.getLayer(i).visible) {
-				iKet1 = "Hotspot";
+				iKet1 = "Hotspot Distribution (2012)";
 				iKet2 = "Point showing hotspot  location, which indicate forest fire, for period 1999 - 2012.";
 				iKet3 = "USGS";
 				
@@ -1416,7 +1458,7 @@ require([
 			
 			//river big layer
 			if (i == "60" && map.getLayer(i).visible) {
-				iKet1 = "River Big";
+				iKet1 = "Main River";
 				iKet2 = "Polygon showing main river.";
 				iKet3 = "BIG";
 				
@@ -1425,25 +1467,16 @@ require([
 			
 			//river small layer
 			if (i == "61" && map.getLayer(i).visible) {
-				iKet1 = "River Small";
+				iKet1 = "River";
 				iKet2 = "Polygon showing smaller river.";
 				iKet3 = "BIG";
 				
 				iHasil = iHasil + iIsi1 + iKet1 + iIsi2 + iKet2 + iIsi3 + iKet3 + iIsi4
 			}
-			
-			//river small layer
-			if (i == "61" && map.getLayer(i).visible) {
-				iKet1 = "River Small";
-				iKet2 = "Polygon showing smaller river.";
-				iKet3 = "BIG";
-				
-				iHasil = iHasil + iIsi1 + iKet1 + iIsi2 + iKet2 + iIsi3 + iKet3 + iIsi4
-			}
-			
+						
 			//landcover layer
 			if (i == "68" && map.getLayer(i).visible) {
-				iKet1 = "Landcover";
+				iKet1 = "Landcover 2011 (MoF)";
 				iKet2 = "Polygon showing landcover in Jambi.";
 				iKet3 = "MoF";
 				
@@ -1497,7 +1530,7 @@ require([
 			
 			//forest area release layer
 			if (i == "78" && map.getLayer(i).visible) {
-				iKet1 = "Forest Area Release";
+				iKet1 = "Forest Conversion to Transmigration Development";
 				iKet2 = "Polygon showing forest conversion to transmigrasi, including license number(no SK), date and area.";
 				iKet3 = "MoF";
 				
@@ -1506,7 +1539,7 @@ require([
 			
 			//forest area release plantation layer
 			if (i == "79" && map.getLayer(i).visible) {
-				iKet1 = "Forest Area Release Plantation";
+				iKet1 = "Forest Conversion to Plantation Development";
 				iKet2 = "Polygon showing forest conversion to oil palm plantation, including company name, license number(no SK), date and area.";
 				iKet3 = "MoF";
 				
@@ -1515,7 +1548,7 @@ require([
 			
 			//forest land swap layer
 			if (i == "80" && map.getLayer(i).visible) {
-				iKet1 = "Forest Land Swap";
+				iKet1 = "Forest Land Swap (IPPKH)";
 				iKet2 = "Polygon showing forest temporary use (pinjam pakai) for mining including the name of company and license number.";
 				iKet3 = "MoF";
 				
@@ -1524,7 +1557,7 @@ require([
 			
 			//hgu layer
 			if (i == "81" && map.getLayer(i).visible) {
-				iKet1 = "HGU";
+				iKet1 = "Land Cultivation Right (HGU)";
 				iKet2 = "Polygon showing plantations permits.";
 				iKet3 = "BPN";
 				
@@ -1533,7 +1566,7 @@ require([
 			
 			//iuphhk ha layer
 			if (i == "82" && map.getLayer(i).visible) {
-				iKet1 = "IUPHHK HA";
+				iKet1 = "Permit to Utilize Forest Product in Natural Forest";
 				iKet2 = "Polygon showing timber concessions in Jambi province. Issued on 2013.";
 				iKet3 = "MoF";
 				
@@ -1542,7 +1575,7 @@ require([
 			
 			//iuphhk hti layer
 			if (i == "83" && map.getLayer(i).visible) {
-				iKet1 = "IUPHHK HTI";
+				iKet1 = "Permit to Utilize Forest Product in Timber Estate";
 				iKet2 = "Polygon showing industrial timber plantation concessions in Jambi province. Issued on 2013.";
 				iKet3 = "MoF";
 				
@@ -1551,7 +1584,7 @@ require([
 			
 			//iuphhk htr layer
 			if (i == "84" && map.getLayer(i).visible) {
-				iKet1 = "IUPHHK HTR";
+				iKet1 = "Permit to Utilize Forest Product in Community Timber Estate";
 				iKet2 = "Polygon showing forest plantation managed by local people.";
 				iKet3 = "MoF";
 				
@@ -1560,7 +1593,7 @@ require([
 			
 			//iuphhk re layer
 			if (i == "85" && map.getLayer(i).visible) {
-				iKet1 = "IUPHHK RE";
+				iKet1 = "Permit to Utilize Forest Product in Ecological Restoration";
 				iKet2 = "Polygon showing location of ecosystem restoration in Jambi.";
 				iKet3 = "MoF";
 				
@@ -1578,7 +1611,7 @@ require([
 			
 			//distribution of the population layer
 			if (i == "88" && map.getLayer(i).visible) {
-				iKet1 = "Distribution of The Population";
+				iKet1 = "Population Distribution";
 				iKet2 = "Polygon showing administrative boundary with attribute contains number and density of population.";
 				iKet3 = "Bappeda";
 				
@@ -1605,7 +1638,7 @@ require([
 			
 			//peat soil layer
 			if (i == "92" && map.getLayer(i).visible) {
-				iKet1 = "Peat Soil BBSDLI";
+				iKet1 = "Peat Soil";
 				iKet2 = "Polygon showing peat soil including type and depth of the peat soil.";
 				iKet3 = "MoA";
 				
@@ -1669,15 +1702,18 @@ require([
 		//agriculture group layers
 		cropLandLayer.hide(); ecologyLayer.hide(); fishingLayer.hide(); paddyFieldLayer.hide(); plantationLayer.hide(); sugarcaneLayer.hide();
 		//carbon project group layers
-		lyr18.hide(); lyr19.hide(); lyr20.hide(); lyr21.hide(); lyr22.hide(); lyr23.hide();
+		lyr18.hide(); lyr19.hide(); lyr20.hide(); //lyr21.hide(); 
+		lyr22.hide(); lyr23.hide();
 		//climate group layers
 		lyr25.hide();
 		//ecology group layers
-		lyr27.hide(); lyr28.hide(); lyr29.hide(); lyr30.hide(); lyr31.hide(); lyr32.hide(); lyr33.hide(); lyr34.hide(); lyr35.hide(); 
+		//lyr27.hide(); 
+		lyr28.hide(); lyr29.hide(); lyr30.hide(); lyr31.hide(); lyr32.hide(); lyr33.hide(); lyr34.hide(); lyr35.hide(); 
 		//energy group layers
 		lyr37.hide();
 		//forestry
-		lyr39.hide(); lyr40.hide(); lyr41.hide(); lyr42.hide(); lyr43.hide(); lyr44.hide(); lyr45.hide(); lyr46.hide(); lyr47.hide();
+		lyr39.hide(); lyr40.hide(); lyr41.hide(); lyr42.hide(); //lyr43.hide(); 
+		lyr44.hide(); lyr45.hide(); lyr46.hide(); lyr47.hide();
 		/*
 		//hazard vulnerability
 		lyr49.hide(); lyr50.hide(); lyr51.hide(); lyr52.hide(); 
@@ -1691,7 +1727,7 @@ require([
 		//landcover
 		lyr68.hide(); 
 		//land degradation
-		lyr70.hide(); lyr71.hide(); 
+		lyr70.hide(); //lyr71.hide(); 
 		//landuse spatial plan
 		lyr73.hide(); 
 		//mining
@@ -1721,7 +1757,7 @@ require([
 		basemapGallery.startup();
 		//add custom basemap
 		var layer = new esri.dijit.BasemapLayer({
-				url:"http://192.168.0.213:6080/arcgis/rest/services/mcai/mca_indonesia/MapServer/4"
+				url:"http://" + iAlamatLokal + ":6080/arcgis/rest/services/mcai/mca_indonesia/MapServer/4"
 				//url:"http://services.arcgisonline.com/ArcGIS/services"
 			});
 			var basemap = new esri.dijit.Basemap({

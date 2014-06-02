@@ -63,10 +63,7 @@ html, body {
 }
 
 #legendDiv {
-	height: 130px;
-	overflow: auto;
-	overflow-x: auto;
-	overflow-y: auto;
+
 }
 
 #measurementDiv {

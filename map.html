@@ -12,9 +12,9 @@
 <link rel="stylesheet" href="http://js.arcgis.com/3.9/js/dojo/dijit/themes/claro/claro.css"> 
 <link rel="stylesheet" href="http://js.arcgis.com/3.9/js/esri/css/esri.css">
 -->
-<link rel="stylesheet" href="http://localhost/arcgis_js_api/library/3.9/js/dojo/dijit/themes/nihilo/nihilo.css">
-<link rel="stylesheet" href="http://localhost/arcgis_js_api/library/3.9/js/dojo/dijit/themes/claro/claro.css"> 
-<link rel="stylesheet" href="http://localhost/arcgis_js_api/library/3.9/js/esri/css/esri.css">
+<link rel="stylesheet" href="http://192.168.0.213/arcgis_js_api/library/3.9/js/dojo/dijit/themes/nihilo/nihilo.css">
+<link rel="stylesheet" href="http://192.168.0.213/arcgis_js_api/library/3.9/js/dojo/dijit/themes/claro/claro.css"> 
+<link rel="stylesheet" href="http://192.168.0.213/arcgis_js_api/library/3.9/js/esri/css/esri.css">
 
 <link rel="stylesheet" type="text/css" href="./js/agsjs/css/agsjs.css" />
 <link rel="stylesheet" href="./css/template.css">
@@ -65,9 +65,10 @@
 
     <div data-dojo-type="dijit/layout/AccordionContainer">
 		<!-- legend pane -->
-		
+		<!--
 		<div data-dojo-type="dijit/layout/ContentPane" id="legendPane"
 			data-dojo-props="title:'Legend'">
+				<div id="legendDiv"></div>
 				<div id="legendAgricultureDiv" style=""></div>
 				<div id="legendCarbonProjectDiv" style=""></div>
 				<div id="legendClimateDiv" style=""></div>
@@ -85,18 +86,17 @@
 				<div id="legendLanduseSpatialPlanDiv" style=""></div>
 				<div id="legendSocioEconomicDiv" style=""></div>
 				<div id="legendSoilDiv" style=""></div>
-				<div id="legendTopographyDiv" style=""></div>
-				<div id="legendDiv" style="visibility:hidden;"></div>
+				<div id="legendTopographyDiv" style=""></div>				
 		</div>
-		
+		-->
 		<!-- filter pane -->
 		<div data-dojo-type="dijit/layout/ContentPane"
-           data-dojo-props="title:'FIlter', selected:true">
+           data-dojo-props="title:'Main Navigation', selected:true">
 		   
 		   <!-- tab container -->
 			<div style="width: 100%; height: 100%">
 				<div data-dojo-type="dijit/layout/TabContainer" style="width: 100%; height: 100%;">
-						<div data-dojo-type="dijit/layout/ContentPane" title="Selection" data-dojo-props="selected:true">
+						<div data-dojo-type="dijit/layout/ContentPane" title="Location" data-dojo-props="selected:true">
 							<div id="areaList">
 								<!-- process area -->
 								<!--
@@ -145,7 +145,7 @@
 								</table>							
 							</div>
 						</div>
-						<div data-dojo-type="dijit/layout/ContentPane" title="Category">
+						<div data-dojo-type="dijit/layout/ContentPane" title="Layer Category">
 							<b>General</b></br>
 							<div id="toggleGeneral" style="padding: 2px 2px;visibility=hidden;"></div></br>
 							<b>Agriculture</b></br>
@@ -224,29 +224,35 @@
        style="overflow:hidden; background-image: url(./images/batik-tile.jpg);">
 	   <img id="loadingImg" src="./images/loading.gif" style="position:absolute; right:512px; top:256px; z-index:100;" />
 	   <div id="HomeButton"></div>
-	   <!--
-	   <div id="legendFlyDiv" style="position:absolute; height : 300px; width : 200px; z-index: 101; left : 10px">
-			<div id="legendAgricultureDiv" style=""></div>
-			<div id="legendCarbonProjectDiv" style=""></div>
-			<div id="legendClimateDiv" style=""></div>
-			<div id="legendEcologyDiv" style=""></div>
-			<div id="legendEnergyDiv" style=""></div>
-			<div id="legendForestryDiv" style=""></div>
-			<div id="legendHazardVunerabillityDiv" style=""></div>
-			<div id="legendHotspotDiv" style=""></div>
-			<div id="legendHydrologyDiv" style=""></div>
-			<div id="legendInfrastructureDiv" style=""></div>
-			<div id="legendLandcoverDiv" style=""></div>
-			<div id="legendLandDegradationDiv" style=""></div>
-			<div id="legendMiningDiv" style=""></div>
-			<div id="legendPermitsDiv" style=""></div>
-			<div id="legendLanduseSpatialPlanDiv" style=""></div>
-			<div id="legendSocioEconomicDiv" style=""></div>
-			<div id="legendSoilDiv" style=""></div>
-			<div id="legendTopographyDiv" style=""></div>
-			<div id="legendDiv" style="visibility:hidden;"></div>
-	   </div>
-	   	-->
+	   
+	   <div style="position:absolute; left:20px; top:10px; z-Index:999;">
+          <div data-dojo-type="dijit/TitlePane" 
+               data-dojo-props="title:'Legend', closable:false,  open:false">
+            <div data-dojo-type="dijit/layout/ContentPane" style="width:380px; height:280px; overflow:auto;">
+            <div id="legendFlyDiv">
+				<div id="legendDiv"></div>
+				<div id="legendAgricultureDiv" style=""></div>
+				<div id="legendCarbonProjectDiv" style=""></div>
+				<div id="legendClimateDiv" style=""></div>
+				<div id="legendEcologyDiv" style=""></div>
+				<div id="legendEnergyDiv" style=""></div>
+				<div id="legendForestryDiv" style=""></div>
+				<div id="legendHazardVunerabillityDiv" style=""></div>
+				<div id="legendHotspotDiv" style=""></div>
+				<div id="legendHydrologyDiv" style=""></div>
+				<div id="legendInfrastructureDiv" style=""></div>
+				<div id="legendLandcoverDiv" style=""></div>
+				<div id="legendLandDegradationDiv" style=""></div>
+				<div id="legendMiningDiv" style=""></div>
+				<div id="legendPermitsDiv" style=""></div>
+				<div id="legendLanduseSpatialPlanDiv" style=""></div>
+				<div id="legendSocioEconomicDiv" style=""></div>
+				<div id="legendSoilDiv" style=""></div>
+				<div id="legendTopographyDiv" style=""></div>				
+		   </div>
+          </div>
+        </div>
+	   
   </div>  
 </div>
 </body>
