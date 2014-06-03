@@ -69,6 +69,7 @@
 		<div data-dojo-type="dijit/layout/ContentPane" id="legendPane"
 			data-dojo-props="title:'Legend'">
 				<div id="legendDiv"></div>
+				<div id="legendAdministrativeDiv" style=""></div>
 				<div id="legendAgricultureDiv" style=""></div>
 				<div id="legendCarbonProjectDiv" style=""></div>
 				<div id="legendClimateDiv" style=""></div>
@@ -148,6 +149,8 @@
 						<div data-dojo-type="dijit/layout/ContentPane" title="Layer Category">
 							<b>General</b></br>
 							<div id="toggleGeneral" style="padding: 2px 2px;visibility=hidden;"></div></br>
+							<b>Administrative</b></br>
+							<div id="toggleAdministrative" style="padding: 2px 2px;"></div></br>
 							<b>Agriculture</b></br>
 							<div id="toggleAgriculture" style="padding: 2px 2px;"></div></br>
 							<b>Carbon Project</b></br>
@@ -229,8 +232,9 @@
           <div data-dojo-type="dijit/TitlePane" 
                data-dojo-props="title:'Legend', closable:false,  open:false">
             <div data-dojo-type="dijit/layout/ContentPane" style="width:380px; height:280px; overflow:auto;">
-            <div id="legendFlyDiv">
+            <div id="legendFlyDiv" style="visibility=hidden;">
 				<div id="legendDiv"></div>
+				<div id="legendAdministrativeDiv" style=""></div>
 				<div id="legendAgricultureDiv" style=""></div>
 				<div id="legendCarbonProjectDiv" style=""></div>
 				<div id="legendClimateDiv" style=""></div>

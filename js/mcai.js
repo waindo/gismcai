@@ -3,9 +3,9 @@ var legendAgriculture = [], legendCarbonProject = [], legendClimate = [], legend
 var legendForestry = [], legendHazardVunerabillity = [], legendHotspot = [], legendHydrology = [];
 var legendInfrastructure = [], legendLandcover = [], legendLandDegradation = [], legendMining = [];
 var legendPermits = [], legendLanduseSpatialPlan = [], legendSocioEconomic = [], legendSoil = [];
-var legendLayers = [], legendTopography = [], legendRainFalls = [];
+var legendLayers = [], legendTopography = [], legendRainFalls = [], legendAdministrative = [];
 
-var iAlamatLokal = "localhost";
+var iAlamatLokal = "117.54.11.70";
 
 require([
 	"esri/map",
@@ -100,7 +100,8 @@ require([
 		fSetLegend();		
 		fAddCategoryGroup();
 		
-		fHideAllFeatureLayers();		
+		fHideAllFeatureLayers();	
+		fKosongDiv();
 		
 		//event when user content pane
 		on(dom.byId("HomeButton"), "click", fHomeButton);
@@ -117,7 +118,6 @@ require([
 		
 		//on(dom.byId("processButton"), "click", fProcess);
 		on(dom.byId("zoomToButton"), "click", fZoomTo);
-		
 	//------------------------
 	//-- all functions --
 	//------------------------
@@ -133,15 +133,13 @@ require([
 	}
 
 	function fLoadAllLayers() {
-		var iMapServicesFolder = "http://" + iAlamatLokal + ":6080/arcgis/rest/services/mcai/";
-		var iFeatureFolder = iMapServicesFolder + "Indonesia/MapServer/";
 		
-		indonesiaBackgroundLayer = new FeatureLayer(iMapServicesFolder + "mca_indonesia/MapServer/4", {}); //new ArcGISDynamicMapServiceLayer(iMapServicesFolder + "Indonesia/MapServer", {});
-		indonesiaLayer = new FeatureLayer(iMapServicesFolder + "mca_indonesia/MapServer/4", {});
-		//mcaiLayer = new ArcGISDynamicMapServiceLayer(iMapServicesFolder + "mca_indonesia/MapServer", {});		
-		//provinceLayer = new ArcGISDynamicMapServiceLayer(iMapServicesFolder + "Indonesia/MapServer", {});
-		//districtLayer = new ArcGISDynamicMapServiceLayer(iMapServicesFolder + "Indonesia/MapServer", {});
+		var iMapServicesFolder = "http://" + iAlamatLokal + ":6080/arcgis/rest/services/data/";
+		var iFeatureFolder = iMapServicesFolder + "indonesia/MapServer/";
 		
+		indonesiaBackgroundLayer = new FeatureLayer(iMapServicesFolder + "mcai_indonesia/MapServer/4", {}); //new ArcGISDynamicMapServiceLayer(iMapServicesFolder + "indonesia/MapServer", {});
+		indonesiaLayer = new FeatureLayer(iMapServicesFolder + "mcai_indonesia/MapServer/4", {id:"4"});
+				
 		 var infoTemplate = new InfoTemplate();
           infoTemplate.setTitle("Information");
           //infoTemplate.setContent("
@@ -185,41 +183,59 @@ require([
 
 		}
 		  
-		villageFeatureLayer = new FeatureLayer(iMapServicesFolder + "Indonesia/MapServer/9", {
-			mode: FeatureLayer.MODE_SNAPSHOT,
-			infoTemplate: infoTemplateDetail,
-			outFields: ["*"]
-		});
-		legendLayers.push({ layer: villageFeatureLayer, title: 'Village' });
-		subDistrictFeatureLayer = new FeatureLayer(iMapServicesFolder + "Indonesia/MapServer/8", {
-			mode: FeatureLayer.MODE_SNAPSHOT,
-			infoTemplate: infoTemplate,
-			outFields: ["*"]
-		});
-		legendLayers.push({ layer: subDistrictFeatureLayer, title: 'Sub District' });
-		
-		mcaiH = new FeatureLayer(iMapServicesFolder + "mca_indonesia/MapServer/1", {});
+		mcaiH = new FeatureLayer(iMapServicesFolder + "mcai_indonesia/MapServer/1", {});
 		legendLayers.push({ layer: mcaiH, title: 'Community-based Health and Nutrition to Reduce Stunting Project' });
-		mcaiPM = new FeatureLayer(iMapServicesFolder + "mca_indonesia/MapServer/2", {});
+		mcaiPM = new FeatureLayer(iMapServicesFolder + "mcai_indonesia/MapServer/2", {});
 		legendLayers.push({ layer: mcaiPM, title: 'Procurement Modernization Project' });
-		mcaiGP = new FeatureLayer(iMapServicesFolder + "mca_indonesia/MapServer/3", {});
+		mcaiGP = new FeatureLayer(iMapServicesFolder + "mcai_indonesia/MapServer/3", {});
 		legendLayers.push({ layer: mcaiGP, title: 'Green Prosperity Project' });
 		
 		
-		
+		/*
 		landscapeFeatureLayer = new FeatureLayer(iMapServicesFolder + "Indonesia/MapServer/207", {
 			mode: FeatureLayer.MODE_SNAPSHOT,
 			infoTemplate: infoTemplate,
 			opacity: 0,
 			outFields: ["*"]
 		});
+		*/
 		
 		//add for category analysis layers
+		//----- administrative group -----
+		villageFeatureLayer = new FeatureLayer(iMapServicesFolder + "indonesia/MapServer/9", {
+			id:"9",
+			mode: FeatureLayer.MODE_SNAPSHOT,
+			infoTemplate: infoTemplateDetail,
+			outFields: ["*"]
+		});
+		legendAdministrative.push({ layer: villageFeatureLayer, title: 'Village Boundary' });
+		subDistrictFeatureLayer = new FeatureLayer(iMapServicesFolder + "indonesia/MapServer/8", {
+			id:"8",
+			mode: FeatureLayer.MODE_SNAPSHOT,
+			infoTemplate: infoTemplate,
+			outFields: ["*"]
+		});
+		legendAdministrative.push({ layer: subDistrictFeatureLayer, title: 'Sub District Boundary' });
+		districtFeatureLayer = new FeatureLayer(iMapServicesFolder + "indonesia/MapServer/7", {
+			id:"7",
+			mode: FeatureLayer.MODE_SNAPSHOT,
+			infoTemplate: infoTemplate,
+			outFields: ["*"]
+		});
+		legendAdministrative.push({ layer: districtFeatureLayer, title: 'District Boundary' });		
+		lyr6 = new FeatureLayer(iFeatureFolder + "6", {id:"6"});
+		legendAdministrative.push({ layer: lyr6, title: 'Capital Sub District' });
+		lyr5 = new FeatureLayer(iFeatureFolder + "5", {id:"5"});
+		legendAdministrative.push({ layer: lyr5, title: 'Capital District' });
+		
 		//----- agriculture group -----
+		/*
 		sugarcaneLayer = new FeatureLayer(iFeatureFolder + "16", {id:"16"});
 		legendAgriculture.push({ layer: sugarcaneLayer, title: 'Sugarcane' });
+		*/
 		plantationLayer = new FeatureLayer(iFeatureFolder + "15", {id:"15", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
 		legendAgriculture.push({ layer: plantationLayer, title: 'Plantation Concession' });
+		/*
 		paddyFieldLayer = new FeatureLayer(iFeatureFolder + "14", {id:"14"});
 		legendAgriculture.push({ layer: paddyFieldLayer, title: 'Paddy Field' });
 		fishingLayer = new FeatureLayer(iFeatureFolder + "13", {id:"13"});
@@ -228,6 +244,7 @@ require([
 		legendAgriculture.push({ layer: ecologyLayer, title: 'Ecology' });
 		cropLandLayer = new FeatureLayer(iFeatureFolder + "11", {id:"11", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
 		legendAgriculture.push({ layer: cropLandLayer, title: 'Cropland' });
+		*/
 		
 		//----- carbon project -----
 		lyr23 = new FeatureLayer(iFeatureFolder + "23", {id:"23"});
@@ -268,6 +285,12 @@ require([
 		//legendEcology.push({ layer: lyr27, title: 'Biodiversity Tiger TNKS' });
 		
 		//----- energy -----
+		lyr37c = new FeatureLayer(iFeatureFolder + "126", {id:"126"});
+		legendEnergy.push({ layer: lyr37c, title: 'RE Microhydro (Merangin)' });
+		lyr37b = new FeatureLayer(iFeatureFolder + "177", {id:"177"});
+		legendEnergy.push({ layer: lyr37b, title: 'Power Plants (Muaro Jambi)' });
+		lyr37a = new FeatureLayer(iFeatureFolder + "125", {id:"125"});
+		legendEnergy.push({ layer: lyr37a, title: 'Power Plants (Merangin)' });
 		lyr37 = new FeatureLayer(iFeatureFolder + "37", {id:"37"});
 		legendEnergy.push({ layer: lyr37, title: 'Transmission Line' });
 		
@@ -381,12 +404,15 @@ require([
 			//provinceLayer, 
 			//districtLayer, 
 			mcaiGP, mcaiH, mcaiPM,
-				subDistrictFeatureLayer,
-				villageFeatureLayer,
-				//landscapeFeatureLayer,
+			//administrative group layers
+			districtFeatureLayer, subDistrictFeatureLayer, villageFeatureLayer, lyr5, lyr6,
+			
+			//landscapeFeatureLayer,
 				
 			//agriculture group layers
-			cropLandLayer, ecologyLayer, fishingLayer, paddyFieldLayer, plantationLayer, sugarcaneLayer, 
+			//cropLandLayer, ecologyLayer, fishingLayer, paddyFieldLayer, 
+			plantationLayer, 
+			//sugarcaneLayer, 
 			//carbon project group layers
 			lyr18, lyr19, lyr20, //lyr21, 
 			lyr22, lyr23, 
@@ -396,7 +422,7 @@ require([
 			//lyr27, 
 			lyr28, lyr29, lyr30, lyr31, lyr32, lyr33, lyr34, lyr35, 
 			//energy group layers
-			lyr37,
+			lyr37, lyr37a, lyr37b, lyr37c, 
 			//forestry
 			lyr39, lyr40, lyr41, lyr42, //lyr43, 
 			lyr44, lyr45, lyr46, lyr47,
@@ -437,6 +463,15 @@ require([
             map: map,
             layerInfos: legendLayers
           }, "legendDiv");
+          legenda.startup();
+        });
+		
+		//administrative legend 
+		map.on('layers-add-result', function () {
+		var legenda = new Legend({
+            map: map,
+            layerInfos: legendAdministrative
+          }, "legendAdministrativeDiv");
           legenda.startup();
         });
 		
@@ -601,12 +636,10 @@ require([
 			layerInfos: legendTopography
 		  }, "legendTopographyDiv");
 		  legenda.startup();
-		});
-
-	}
-	
+		});		
+	}	
 	function fAddCategoryGroup() {		
-		//----- administrative -----
+		//----- genereal -----
 		map.on('layers-add-result', function () {
           //add check boxes
           arrayUtils.forEach(legendLayers, function (layer) {
@@ -620,10 +653,38 @@ require([
               var targetLayer = map.getLayer(this.value);
               targetLayer.setVisibility(!targetLayer.visible);
               this.checked = targetLayer.visible;
+			  fAdditionalInfo(this.value);
             });
-
+			
             //add the check box and label to the toc
             domConstruct.place(checkBox.domNode, dom.byId("toggleGeneral"), "after");
+            var checkLabel = domConstruct.create('label', {
+                'for': checkBox.name,
+                innerHTML: layerName
+              }, checkBox.domNode, "after");
+            domConstruct.place("<br />", checkLabel, "after");
+          });
+        });
+		
+		//----- administrative -----
+		map.on('layers-add-result', function () {
+          //add check boxes
+          arrayUtils.forEach(legendAdministrative, function (layer) {
+            var layerName = layer.title;
+            var checkBox = new CheckBox({
+              name: "checkBox" + layer.layer.id,
+              value: layer.layer.id,
+              checked: layer.layer.visible
+            });
+            checkBox.on("change", function () {
+              var targetLayer = map.getLayer(this.value);
+              targetLayer.setVisibility(!targetLayer.visible);
+              this.checked = targetLayer.visible;
+			  fAdditionalInfo(this.value);
+            });
+			
+            //add the check box and label to the toc
+            domConstruct.place(checkBox.domNode, dom.byId("toggleAdministrative"), "after");
             var checkLabel = domConstruct.create('label', {
                 'for': checkBox.name,
                 innerHTML: layerName
@@ -1118,7 +1179,7 @@ require([
               }, checkBox.domNode, "after");
             domConstruct.place("<br />", checkLabel, "after");
           });
-        });
+        });		
 	}
 	
 	function fCreateLegendDiv(iLegendInfo, iLegendDiv) {
@@ -1137,8 +1198,6 @@ require([
 			console.log("Error at fCreateLegendDiv. " + e.message);
 		}*/
 	}
-	
-	
 	function fCreateCheckboxToggle(iLegendName, iToggleName){
 		map.on('layers-add-result', function () {
           //add check boxes
@@ -1167,8 +1226,161 @@ require([
         });		
 	}
 	
-	function fAdditionalInfo(iVal) {
+	function fCheckLegendDiv() {
+		var iAktif=false;
+		
+		//general
+		 arrayUtils.forEach(legendLayers, function (layer) {
+			if (map.getLayer(layer.layer.id).visible) {iAktif=true}
+         });
+		 if (!iAktif) {
+			dom.byId("legendDiv").innerHTML="";			
+			};
+		 iAktif=false;
+		 
+		//legendAdministrativeDiv
+		 arrayUtils.forEach(legendAdministrative, function (layer) {
+			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
+         });
+		 if (!iAktif) {dom.byId("legendAdministrativeDiv").innerHTML="";};
+		 iAktif=false;
+		 
+		//legendAgricultureDiv
+		 arrayUtils.forEach(legendAgriculture, function (layer) {
+			if (map.getLayer(layer.layer.id).visible) {iAktif=true}
+         });
+		 if (!iAktif) {dom.byId("legendAgricultureDiv").innerHTML="";};
+		 iAktif=false;
+		 
+		//legendCarbonProjectDiv
+		 arrayUtils.forEach(legendCarbonProject, function (layer) {
+			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
+         });
+		 if (!iAktif) {dom.byId("legendCarbonProjectDiv").innerHTML="";};
+		 iAktif=false;
+		 
+		//general
+		 arrayUtils.forEach(legendLayers, function (layer) {
+			if (map.getLayer(layer.layer.id).visible) {iAktif=true}
+         });
+		 if (!iAktif) {dom.byId("legendDiv").innerHTML="";};
+		 iAktif=false;
+		 
+		//legendClimateDiv
+		 arrayUtils.forEach(legendClimate, function (layer) {
+			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
+         });
+		 if (!iAktif) {dom.byId("legendClimateDiv").innerHTML="";};
+		 iAktif=false;
+		 
+		//legendEcologyDiv
+		 arrayUtils.forEach(legendEcology, function (layer) {
+			if (map.getLayer(layer.layer.id).visible) {iAktif=true}
+         });
+		 if (!iAktif) {dom.byId("legendEcologyDiv").innerHTML="";};
+		 iAktif=false;
+		 
+		//legendEnergyDiv
+		 arrayUtils.forEach(legendEnergy, function (layer) {
+			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
+         });
+		 if (!iAktif) {dom.byId("legendEnergyDiv").innerHTML="";};
+		 iAktif=false;
+		 
+		 //legendForestryDiv
+		 arrayUtils.forEach(legendForestry, function (layer) {
+			if (map.getLayer(layer.layer.id).visible) {iAktif=true}
+         });
+		 if (!iAktif) {dom.byId("legendForestryDiv").innerHTML="";};
+		 iAktif=false;
+		 
+		//legendHazardVunerabillityDiv
+		 arrayUtils.forEach(legendHazardVunerabillity, function (layer) {
+			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
+         });
+		 if (!iAktif) {dom.byId("legendHazardVunerabillityDiv").innerHTML="";};
+		 iAktif=false;
+		 
+		//legendHotspotDiv
+		 arrayUtils.forEach(legendHotspot, function (layer) {
+			if (map.getLayer(layer.layer.id).visible) {iAktif=true}
+         });
+		 if (!iAktif) {dom.byId("legendHotspotDiv").innerHTML="";};
+		 iAktif=false;
+		 
+		//legendHydrologyDiv
+		 arrayUtils.forEach(legendHydrology, function (layer) {
+			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
+         });
+		 if (!iAktif) {dom.byId("legendHydrologyDiv").innerHTML="";};
+		 iAktif=false;
+		 
+		//legendInfrastructureDiv
+		 arrayUtils.forEach(legendInfrastructure, function (layer) {
+			if (map.getLayer(layer.layer.id).visible) {iAktif=true}
+         });
+		 if (!iAktif) {dom.byId("legendInfrastructureDiv").innerHTML="";};
+		 iAktif=false;
+		 
+		//legendLandcoverDiv
+		 arrayUtils.forEach(legendLandcover, function (layer) {
+			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
+         });
+		 if (!iAktif) {dom.byId("legendLandcoverDiv").innerHTML="";};
+		 iAktif=false;
+		 
+		//legendLandDegradationDiv
+		 arrayUtils.forEach(legendLandDegradation, function (layer) {
+			if (map.getLayer(layer.layer.id).visible) {iAktif=true}
+         });
+		 if (!iAktif) {dom.byId("legendLandDegradationDiv").innerHTML="";};
+		 iAktif=false;
+		 
+		//legendMiningDiv
+		 arrayUtils.forEach(legendMining, function (layer) {
+			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
+         });
+		 if (!iAktif) {dom.byId("legendMiningDiv").innerHTML="";};
+		 iAktif=false;
+		 
+		//legendTopographyDiv
+		 arrayUtils.forEach(legendTopography, function (layer) {
+			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
+         });
+		 if (!iAktif) {dom.byId("legendTopographyDiv").innerHTML="";};
+		 iAktif=false;
+		 
+		//legendPermitsDiv
+		 arrayUtils.forEach(legendPermits, function (layer) {
+			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
+         });
+		 if (!iAktif) {dom.byId("legendPermitsDiv").innerHTML="";};
+		 iAktif=false;
+		 
+		//legendLanduseSpatialPlanDiv
+		 arrayUtils.forEach(legendLanduseSpatialPlan, function (layer) {
+			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
+         });
+		 if (!iAktif) {dom.byId("legendLanduseSpatialPlanDiv").innerHTML="";};
+		 iAktif=false;
+		 
+		//legendSocioEconomicDiv
+		 arrayUtils.forEach(legendSocioEconomic, function (layer) {
+			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
+         });
+		 if (!iAktif) {dom.byId("legendSocioEconomicDiv").innerHTML="";};
+		 iAktif=false;
+		 
+		//legendSoilDiv
+		 arrayUtils.forEach(legendSoil, function (layer) {
+			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
+         });
+		 if (!iAktif) {dom.byId("legendSoilDiv").innerHTML="";};
+		 iAktif=false;
+	}
 	
+	function fAdditionalInfo(iVal) {
+		fCheckLegendDiv();
 		
 		//alert(iVal);
 		var targetLayer = map.getLayer(iVal);        
@@ -1180,6 +1392,33 @@ require([
 		var iHasilPlantation="", iHasilBerbak="", iHasilCarbon="", iHasil ="";
 		
 		for (var i = 1; i < 95; i++) {
+			//district layer
+			if (i == "7" && map.getLayer(i).visible) {			
+				iKet1 = "District";				
+				iKet2 = "Polygon showing district boundary of Jambi Province.";
+				iKet3 = "BPS";
+				
+				iHasil = iHasil + iIsi1 + iKet1 + iIsi2 + iKet2 + iIsi3 + iKet3 + iIsi4;
+			}
+			
+			//subdistrict layer
+			if (i == "8" && map.getLayer(i).visible) {			
+				iKet1 = "Sub District";				
+				iKet2 = "Polygon showing sub district boundary of Jambi Province.";
+				iKet3 = "BPS";
+				
+				iHasil = iHasil + iIsi1 + iKet1 + iIsi2 + iKet2 + iIsi3 + iKet3 + iIsi4;
+			}
+			
+			//village layer
+			if (i == "9" && map.getLayer(i).visible) {			
+				iKet1 = "Village";				
+				iKet2 = "Polygon showing village boundary of Jambi Province.";
+				iKet3 = "BPS";
+				
+				iHasil = iHasil + iIsi1 + iKet1 + iIsi2 + iKet2 + iIsi3 + iKet3 + iIsi4;
+			}
+			
 			//plantation concession layer
 			if (i == "15" && map.getLayer(i).visible) {			
 				iKet1 = "Plantation Concession";
@@ -1258,6 +1497,7 @@ require([
 			}
 
 			//tiger distribution layer
+			/*
 			if (i == "27" && map.getLayer(i).visible) {
 				iKet1 = "Tiger Distribution";
 				iKet2 = "Polygon showing tiger habitat in Sumatra, based on area  of 250km2 assumption which is the smallest area for tiger to be able to live.";
@@ -1265,6 +1505,7 @@ require([
 				
 				iHasil = iHasil + iIsi1 + iKet1 + iIsi2 + iKet2 + iIsi3 + iKet3 + iIsi4
 			}
+			*/
 			
 			//elephant distribution layer
 			if (i == "29" && map.getLayer(i).visible) {
@@ -1493,6 +1734,7 @@ require([
 			}
 			
 			//gerhan layer
+			/*
 			if (i == "71" && map.getLayer(i).visible) {
 				iKet1 = "Gerhan";
 				iKet2 = "Polygon showing the progress of forest rehabilitation activity for the period 2003 – 2007.";
@@ -1500,6 +1742,7 @@ require([
 				
 				iHasil = iHasil + iIsi1 + iKet1 + iIsi2 + iKet2 + iIsi3 + iKet3 + iIsi4
 			}
+			*/
 			
 			//landuse spatial plan layer
 			if (i == "73" && map.getLayer(i).visible) {
@@ -1667,15 +1910,26 @@ require([
 	
 	function fHomeButton() {
 		hideLayers();
-		mcaiLayer.show();
+		//mcaiLayer.show();
 		
-		fRadioProvince();
+		//fRadioProvince();
 		fRadioProvinceZT();
 		
-		dijit.byId("provinceSelect").attr("disabled", false);
-		dijit.byId("radioProvince").attr("checked", true);
+		//dijit.byId("provinceSelect").attr("disabled", false);
+		//dijit.byId("radioProvince").attr("checked", true);
+		
 		dijit.byId("provinceSelectZT").attr("disabled", false);
 		dijit.byId("radioProvinceZT").attr("checked", true);
+		
+		dojo.forEach (dojo.query("input[type=checkbox]"), function(item){
+			var widget = dijit.getEnclosingWidget(item);
+			//alert(widget)
+			widget.set('checked', false);
+		})
+		
+		fAdditionalInfo(1);
+		
+		
 	}
 		
 	function hideLayers() {
@@ -1690,17 +1944,44 @@ require([
 		*/
 		
 		//argoEcologyZoneLayer.setVisibility();
+		//indonesiaBackgroundLayer.hide();
+		indonesiaLayer.hide();
+		mcaiGP.hide(); mcaiH.hide(); mcaiPM.hide();
+			
 		fHideAllFeatureLayers();
 	}
-	
+	function fKosongDiv() {
+		dom.byId("legendDiv").innerHTML="";
+		dom.byId("legendAdministrativeDiv").innerHTML="";
+		dom.byId("legendAgricultureDiv").innerHTML="";
+		dom.byId("legendCarbonProjectDiv").innerHTML="";
+		dom.byId("legendClimateDiv").innerHTML="";
+		dom.byId("legendEcologyDiv").innerHTML="";
+		dom.byId("legendEnergyDiv").innerHTML="";
+		dom.byId("legendForestryDiv").innerHTML="";
+		dom.byId("legendHazardVunerabillityDiv").innerHTML="";
+		dom.byId("legendHotspotDiv").innerHTML="";
+		dom.byId("legendHydrologyDiv").innerHTML="";
+		dom.byId("legendInfrastructureDiv").innerHTML="";
+		dom.byId("legendLandcoverDiv").innerHTML="";
+		dom.byId("legendLandDegradationDiv").innerHTML="";
+		dom.byId("legendMiningDiv").innerHTML="";
+		dom.byId("legendPermitsDiv").innerHTML="";
+		dom.byId("legendLanduseSpatialPlanDiv").innerHTML="";
+		dom.byId("legendSocioEconomicDiv").innerHTML="";
+		dom.byId("legendSoilDiv").innerHTML="";
+		dom.byId("legendTopographyDiv").innerHTML="";
+	}
 	function fHideAllFeatureLayers() {
 		// mcai project
 		mcaiGP.hide(); mcaiH.hide(); mcaiPM.hide();
 		//administrative
-		subDistrictFeatureLayer.hide(); villageFeatureLayer.hide();
+		districtFeatureLayer.hide(); subDistrictFeatureLayer.hide(); villageFeatureLayer.hide(); lyr5.hide(); lyr6.hide();
 		
 		//agriculture group layers
-		cropLandLayer.hide(); ecologyLayer.hide(); fishingLayer.hide(); paddyFieldLayer.hide(); plantationLayer.hide(); sugarcaneLayer.hide();
+		//cropLandLayer.hide(); ecologyLayer.hide(); fishingLayer.hide(); paddyFieldLayer.hide(); 
+		plantationLayer.hide(); 
+		//sugarcaneLayer.hide();
 		//carbon project group layers
 		lyr18.hide(); lyr19.hide(); lyr20.hide(); //lyr21.hide(); 
 		lyr22.hide(); lyr23.hide();
@@ -1710,7 +1991,7 @@ require([
 		//lyr27.hide(); 
 		lyr28.hide(); lyr29.hide(); lyr30.hide(); lyr31.hide(); lyr32.hide(); lyr33.hide(); lyr34.hide(); lyr35.hide(); 
 		//energy group layers
-		lyr37.hide();
+		lyr37.hide(); lyr37a.hide(); lyr37b.hide(); lyr37c.hide();
 		//forestry
 		lyr39.hide(); lyr40.hide(); lyr41.hide(); lyr42.hide(); //lyr43.hide(); 
 		lyr44.hide(); lyr45.hide(); lyr46.hide(); lyr47.hide();
@@ -1739,7 +2020,7 @@ require([
 		//soil
 		lyr90.hide(); lyr91.hide(); lyr92.hide(); 
 		//topography
-		lyr94.hide();
+		lyr94.hide();		
 	}
 	
 	function fLoadWidgets() {
