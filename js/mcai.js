@@ -5,7 +5,7 @@ var legendInfrastructure = [], legendLandcover = [], legendLandDegradation = [],
 var legendPermits = [], legendLanduseSpatialPlan = [], legendSocioEconomic = [], legendSoil = [];
 var legendLayers = [], legendTopography = [], legendRainFalls = [], legendAdministrative = [];
 
-var iAlamatLokal = "117.54.11.70";
+var iAlamatLokal = "192.168.0.213";
 
 require([
 	"esri/map",
@@ -21,6 +21,7 @@ require([
 	"esri/layers/ArcGISTiledMapServiceLayer", 
 	"esri/layers/ArcGISDynamicMapServiceLayer",
 	"esri/layers/ImageParameters",
+	"esri/layers/LabelLayer",
   
 	"esri/symbols/SimpleFillSymbol",
 	"esri/renderers/ClassBreaksRenderer",
@@ -62,7 +63,7 @@ require([
 	],
 	function (
 		Map, utils, InfoTemplate, Legend, InfoWindowLite, HomeButton, Bookmarks, Scalebar, BasemapGallery,  
-			FeatureLayer, ArcGISTiledMapServiceLayer, ArcGISDynamicMapServiceLayer, ImageParameters,  
+			FeatureLayer, ArcGISTiledMapServiceLayer, ArcGISDynamicMapServiceLayer, ImageParameters,  LabelLayer, 
 			SimpleFillSymbol, ClassBreaksRenderer, Extent, Print, PrintTemplate, esriRequest, esriConfig,
 		domConstruct, dom, on, parser, query, arrayUtils, connect, Color, Memory, 
 		CheckBox, ComboBox, RadioButton, Button, 
@@ -137,7 +138,10 @@ require([
 		var iMapServicesFolder = "http://" + iAlamatLokal + ":6080/arcgis/rest/services/data/";
 		var iFeatureFolder = iMapServicesFolder + "indonesia/MapServer/";
 		
-		indonesiaBackgroundLayer = new FeatureLayer(iMapServicesFolder + "mcai_indonesia/MapServer/4", {}); //new ArcGISDynamicMapServiceLayer(iMapServicesFolder + "indonesia/MapServer", {});
+		console.log(iMapServicesFolder);
+		console.log(iFeatureFolder);
+		
+		indonesiaBackgroundLayer = new FeatureLayer(iMapServicesFolder + "mcai_indonesia/MapServer/4", {}); 
 		indonesiaLayer = new FeatureLayer(iMapServicesFolder + "mcai_indonesia/MapServer/4", {id:"4"});
 				
 		 var infoTemplate = new InfoTemplate();
@@ -163,6 +167,7 @@ require([
 			"<tr>" +
 				"<td colspan=2><font face=Arial size=2>${DESA:getFile}</font></td>" +
 			"</tr>" +
+			
 		"</table>" 
 		);
 		getFile = function(value, key, data) {
@@ -192,7 +197,7 @@ require([
 		
 		
 		/*
-		landscapeFeatureLayer = new FeatureLayer(iMapServicesFolder + "Indonesia/MapServer/207", {
+		landscapeFeatureLayer = new FeatureLayer(iMapServicesFolder + "indonesia/MapServer/207", {
 			mode: FeatureLayer.MODE_SNAPSHOT,
 			infoTemplate: infoTemplate,
 			opacity: 0,
@@ -225,6 +230,9 @@ require([
 		legendAdministrative.push({ layer: districtFeatureLayer, title: 'District Boundary' });		
 		lyr6 = new FeatureLayer(iFeatureFolder + "6", {id:"6"});
 		legendAdministrative.push({ layer: lyr6, title: 'Capital Sub District' });
+		
+		var labelField = "City_name";
+
 		lyr5 = new FeatureLayer(iFeatureFolder + "5", {id:"5"});
 		legendAdministrative.push({ layer: lyr5, title: 'Capital District' });
 		
@@ -396,7 +404,7 @@ require([
 		
 		//----- topography -----
 		lyr94 = new FeatureLayer(iFeatureFolder + "94", {id:"94", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
-		legendTopography.push({ layer: lyr94, title: 'Topographic Map' });
+		legendTopography.push({ layer: lyr94, title: 'Contour Line' });
 		
 		map.addLayers([
 			indonesiaBackgroundLayer, 
@@ -1890,7 +1898,7 @@ require([
 			
 			//topographic layer
 			if (i == "94" && map.getLayer(i).visible) {
-				iKet1 = "Topographic";
+				iKet1 = "Contour Line";
 				iKet2 = "Line showing contour/elevation line based on RBI map scale 1:50.000.";
 				iKet3 = "BIG";
 				
