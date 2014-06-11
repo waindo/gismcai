@@ -6,7 +6,9 @@ var legendPermits = [], legendLanduseSpatialPlan = [], legendSocioEconomic = [],
 var legendLayers = [], legendTopography = [], legendRainFalls = [], legendAdministrative = [];
 var legendLandscape = [];
 
-var iAlamatLokal = "localhost";
+var iAlamatLokal = "192.168.0.213";
+var iMapServicesFolder = "http://" + iAlamatLokal + ":6080/arcgis/rest/services/data/";
+var iFeatureFolder = iMapServicesFolder + "indonesia3/MapServer/";
 
 require([
 	"esri/map",
@@ -50,6 +52,7 @@ require([
 	"dijit/form/ComboBox",
 	"dijit/form/RadioButton",
 	"dijit/form/Button",
+	"dijit/form/HorizontalSlider",
 	"dijit/layout/AccordionContainer",
 	"dijit/layout/BorderContainer",
 	"dijit/layout/ContentPane",
@@ -73,14 +76,14 @@ require([
 			SimpleLineSymbol, SimpleFillSymbol, TextSymbol, ClassBreaksRenderer, SimpleRenderer, 
 			Extent, Print, PrintTemplate, esriRequest, esriConfig,
 		domConstruct, dom, on, parser, query, arrayUtils, connect, Color, Memory, 
-		CheckBox, ComboBox, RadioButton, Button, 
+		CheckBox, ComboBox, RadioButton, Button, HorizontalSlider, 
 			AccordionContainer, BorderContainer, ContentPane, 
 			TitlePane, MenuBar, PopupMenuBarItem, Menu, MenuItem, DropDownMenu, TabContainer, 
 		Measurement,
 		TOC
 	) {
 		parser.parse();
-		esriConfig.defaults.io.proxyUrl = "/mcai_dev/proxy";
+		esriConfig.defaults.io.proxyUrl = "/proxy";
 		loading = dojo.byId("loadingImg");
 		
 		map = new Map("map", {
@@ -141,13 +144,9 @@ require([
 	}
 
 	function fLoadAllLayers() {
-		
-		var iMapServicesFolder = "http://" + iAlamatLokal + ":6080/arcgis/rest/services/data/";
-		var iFeatureFolder = iMapServicesFolder + "indonesia3/MapServer/";
-		
-		 var infoTemplate = new InfoTemplate();
-          infoTemplate.setTitle("Information");
-          //infoTemplate.setContent("
+		var infoTemplate = new InfoTemplate();
+        infoTemplate.setTitle("Information");
+        //infoTemplate.setContent("
 		
 		var infoTemplateDetail = new InfoTemplate();
           infoTemplateDetail.setTitle("Information");
@@ -234,7 +233,7 @@ require([
 		legendAdministrative.push({ layer: lyr10, title: 'District Boundary'});		
 		lyr9 = new FeatureLayer(iFeatureFolder + "9", {id:"9"});
 		legendAdministrative.push({ layer: lyr9, title: 'Capital Sub District'});		
-		lyr8 = new FeatureLayer(iFeatureFolder + "8", {id:"8"});
+		lyr8 = new FeatureLayer(iFeatureFolder + "8", {id:"8", slider: true});
 		legendAdministrative.push({ layer: lyr8, title: 'Capital District'});
 		
 		//----- agriculture group -----
@@ -559,7 +558,7 @@ require([
 			var capitalSymbol = new SimpleFillSymbol("solid", capitalLine, null);
 			var capitalRenderer = new SimpleRenderer(capitalSymbol);
 			// create a feature layer to show country boundaries
-			var capitalUrl = "http://localhost:6080/arcgis/rest/services/data/indonesia3/MapServer/8";
+			var capitalUrl = iFeatureFolder + "8";
 			capitalLayer = new FeatureLayer(capitalUrl, {
 			  id: "capital",
 			  outFields: [labelField] 
@@ -774,6 +773,15 @@ require([
 		  legenda.startup();
 		});		
 	}	
+	
+	function changeTransparency(value) {
+		var layer = map.getLayer(8);
+		if(layer != null)
+		{
+			layer.setOpacity(value);
+		}
+	}
+	
 	function fAddCategoryGroup() {		
 		//----- genereal -----
 		map.on('layers-add-result', function () {
@@ -2310,12 +2318,27 @@ require([
 			},dojo.byId("scalebarDiv"));		
 		
 		//add print button		
-		var printer = new Print({
-			map: map,
-			templates: "",
-			url: "http://sampleserver6.arcgisonline.com/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task",
-		}, dom.byId("printButton"));
-		printer.startup();
+		printer = new Print({
+          map: map,
+          url: "http://sampleserver6.arcgisonline.com/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task"
+        }, dom.byId("printButton"));
+        printer.startup();
+		
+		//add general slider
+		slider = new HorizontalSlider({
+        name: "slider",
+        value: 1,
+        minimum: 0,
+        maximum: 1,
+        intermediateChanges: true,
+        style: "width:250px;",
+        onChange: function(value){
+            //dom.byId("sliderValue").value = value;
+			 map.getLayer(1).setOpacity(value);
+			 map.getLayer(2).setOpacity(value);
+			 map.getLayer(3).setOpacity(value);
+        }
+    }, "sliderGeneral");
 	}
 	
 	function fRadioProvince() {
