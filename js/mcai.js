@@ -14,12 +14,14 @@ require([
 	"esri/map",
 	"esri/arcgis/utils",
 	"esri/InfoTemplate", 
+	
 	"esri/dijit/Legend",
 	"esri/dijit/InfoWindowLite",	  
 	"esri/dijit/HomeButton",
 	"esri/dijit/Bookmarks",
 	"esri/dijit/Scalebar",
 	"esri/dijit/BasemapGallery", 
+	
 	"esri/layers/FeatureLayer",
 	"esri/layers/ArcGISTiledMapServiceLayer", 
 	"esri/layers/ArcGISDynamicMapServiceLayer",
@@ -83,7 +85,8 @@ require([
 		TOC
 	) {
 		parser.parse();
-		esriConfig.defaults.io.proxyUrl = "/proxy";
+		
+		esriConfig.defaults.io.proxyUrl = "/mcai_dev/proxy";
 		loading = dojo.byId("loadingImg");
 		
 		map = new Map("map", {
@@ -111,9 +114,10 @@ require([
 		fAddCategoryGroup();
 		
 		fLoadWidgets();
+		//fSetPrinter();
 		fLoadAreaList();
 		fLoadZoomTo();
-		
+
 		//event when user content pane
 		on(dom.byId("HomeButton"), "click", fHomeButton);
 		
@@ -132,6 +136,53 @@ require([
 	//------------------------
 	//-- all functions --
 	//------------------------
+	function fSetPrinter() {
+			var printTitle = "MCA - Indonesia"
+			var printUrl = "http://sampleserver6.arcgisonline.com/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task";
+			
+			esriConfig.defaults.io.proxyUrl = "/mcai_dev/proxy";
+			
+			var layoutTemplate, templateNames, mapOnlyIndex, templates;
+          
+          // create an array of objects that will be used to create print templates
+			var layouts = [{
+				name: "Letter ANSI A Landscape", 
+				label: "Landscape (PDF)", 
+				format: "pdf",             
+			}, {
+				name: "Letter ANSI A Portrait", 
+				label: "Portrait (Image)", 
+				format: "jpg",             
+			}];
+          
+          // create the print templates
+			var legendLayer = new esri.tasks.LegendLayer();
+			legendLayer.layerId = "defaultBasemap";
+
+			var templates = arrayUtils.map(layouts, function(lo) {
+            var t = new PrintTemplate();
+            t.layout = lo.name;
+            t.label = lo.label;
+            t.format = lo.format;
+            t.layoutOptions = {
+				"authorText": "Made by:  MCA - Indonesia",
+				"copyrightText": "Copyright: MCA - Indonesia 2014",
+				//"legendLayers": layerIds , 
+				"titleText": printTitle, 
+				"scalebarUnit": "Kilometers" 
+			}
+			
+            return t;
+          });
+
+			var printer = new Print({
+				map: map,
+				templates: templates,
+				url: printUrl
+			}, dom.byId("printButton"));
+			printer.startup();
+		}
+		  
 	function fShowLoading() {
 	  esri.show(loading);
 	  map.disableMapNavigation();
@@ -2317,28 +2368,49 @@ require([
 			scalebarUnit: "metric"
 			},dojo.byId("scalebarDiv"));		
 		
-		//add print button		
-		printer = new Print({
-          map: map,
-          url: "http://sampleserver6.arcgisonline.com/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task"
-        }, dom.byId("printButton"));
-        printer.startup();
-		
-		//add general slider
-		slider = new HorizontalSlider({
-        name: "slider",
-        value: 1,
-        minimum: 0,
-        maximum: 1,
-        intermediateChanges: true,
-        style: "width:250px;",
-        onChange: function(value){
-            //dom.byId("sliderValue").value = value;
-			 map.getLayer(1).setOpacity(value);
-			 map.getLayer(2).setOpacity(value);
-			 map.getLayer(3).setOpacity(value);
-        }
-    }, "sliderGeneral");
+		//add slider
+		fCreateSlider(1, 3, "sliderGeneral");
+		fCreateSlider(8, 12, "sliderAdministrative");
+		fCreateSlider(14, 14, "sliderAgriculture");
+		fCreateSlider(16, 20, "sliderCarbonProject");
+		fCreateSlider(22, 22, "sliderClimate");
+		fCreateSlider(24, 31, "sliderEcology");
+		fCreateSlider(33, 36, "sliderEnergy");
+		fCreateSlider(38, 45, "sliderForestry");
+		fCreateSlider(52, 55, "sliderHotspot");
+		fCreateSlider(57, 69, "sliderHydrology");
+		fCreateSlider(71, 82, "sliderInfrastructure");
+		fCreateSlider(84, 94, "sliderLandcover");
+		fCreateSlider(96, 97, "sliderLandscape");
+		fCreateSlider(99, 99, "sliderLandDegradation");
+		fCreateSlider(101, 101, "sliderMining");
+		fCreateSlider(103, 104, "sliderPermits");
+		fCreateSlider(106, 113, "sliderLanduseSpatialPlan");
+		fCreateSlider(115, 116, "sliderSocioEconomic");
+		fCreateSlider(118, 120, "sliderSoil");
+		fCreateSlider(122, 132, "sliderTopograpy");
+	}
+	
+	function fCreateSlider(iLayerIDStart, iLayerIDEnd, iSliderDivName) {
+		try {
+			slider = new HorizontalSlider({
+			name: "slider" + iLayerIDStart,
+			value: 1,
+			minimum: 0,
+			maximum: 1,
+			intermediateChanges: true,
+			style: "250px",
+			onChange: function(value){
+					for (var i = iLayerIDStart; i <= iLayerIDEnd; i++) {
+						map.getLayer(i).setOpacity(value);
+					}			
+				}
+			}, iSliderDivName);
+		}
+		catch (err) {
+			alert ("Error found");
+			console.log ("fCreateSlider : " + err.message);
+		}		
 	}
 	
 	function fRadioProvince() {
