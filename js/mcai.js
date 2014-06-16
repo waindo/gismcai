@@ -1,4 +1,4 @@
-	var app = {}, map, toc, dynaLayer1, dynaLayer2, featLayer1;
+var app = {}, map, toc, dynaLayer1, dynaLayer2, featLayer1;
 var legendAgriculture = [], legendCarbonProject = [], legendClimate = [], legendEcology = [], legendEnergy = [];
 var legendForestry = [], legendHazardVunerabillity = [], legendHotspot = [], legendHydrology = [];
 var legendInfrastructure = [], legendLandcover = [], legendLandDegradation = [], legendMining = [];
@@ -36,10 +36,11 @@ require([
 	"esri/renderers/SimpleRenderer",
 	
 	"esri/geometry/Extent", 
-   
+	"esri/toolbars/navigation",
+	
 	"esri/dijit/Print", "esri/tasks/PrintTemplate", 
 	"esri/request", "esri/config",
-		
+	
 	"dojo/dom-construct",
 	"dojo/dom",      
 	"dojo/on",
@@ -65,7 +66,10 @@ require([
 	"dijit/MenuItem",
 	"dijit/DropDownMenu",
 	"dijit/layout/TabContainer",
+	"dijit/Toolbar",
+	"dijit/registry",
 	"esri/dijit/Measurement",
+	
   
 	"agsjs/dijit/TOC", 
   
@@ -76,16 +80,17 @@ require([
 		Map, utils, InfoTemplate, Legend, InfoWindowLite, HomeButton, Bookmarks, Scalebar, BasemapGallery,  
 			FeatureLayer, ArcGISTiledMapServiceLayer, ArcGISDynamicMapServiceLayer, ImageParameters,  LabelLayer, 
 			SimpleLineSymbol, SimpleFillSymbol, TextSymbol, ClassBreaksRenderer, SimpleRenderer, 
-			Extent, Print, PrintTemplate, esriRequest, esriConfig,
+			Extent, Navigation, Print, PrintTemplate, esriRequest, esriConfig,
 		domConstruct, dom, on, parser, query, arrayUtils, connect, Color, Memory, 
 		CheckBox, ComboBox, RadioButton, Button, HorizontalSlider, 
 			AccordionContainer, BorderContainer, ContentPane, 
-			TitlePane, MenuBar, PopupMenuBarItem, Menu, MenuItem, DropDownMenu, TabContainer, 
+			TitlePane, MenuBar, PopupMenuBarItem, Menu, MenuItem, DropDownMenu, TabContainer, Toolbar, registry,
 		Measurement,
 		TOC
 	) {
 		parser.parse();
-		
+		var navToolbar;
+
 		esriConfig.defaults.io.proxyUrl = "/mcai_dev/proxy";
 		loading = dojo.byId("loadingImg");
 		
@@ -96,16 +101,19 @@ require([
 			zoom: 5,
 			showAttribution: false,
 			sliderPosition: "top-right",
-			sliderStyle: "large"		
+			sliderStyle: "large"
 		});
 		//hide the default basemap 
 		//var basemap = map.getLayer(map.layerIds[0]);
 		//basemap.hide();
 		
 		//set for loading gif
-		dojo.connect(map, "onUpdateStart", fShowLoading);
-        dojo.connect(map, "onUpdateEnd", fHideLoading);
 		
+		//dojo.connect(map, "onUpdateStart", fShowLoading);
+        //dojo.connect(map, "onUpdateEnd", fHideLoading);
+		
+		
+  
 		fLoadAllLayers();
 		fAddLabelLayers();
 		fHideAllFeatureLayers();	
@@ -114,7 +122,7 @@ require([
 		fAddCategoryGroup();
 		
 		fLoadWidgets();
-		//fSetPrinter();
+		fSetPrinter();
 		fLoadAreaList();
 		fLoadZoomTo();
 
@@ -133,14 +141,50 @@ require([
 		
 		//on(dom.byId("processButton"), "click", fProcess);
 		on(dom.byId("zoomToButton"), "click", fZoomTo);
+		
+		navToolbar = new Navigation(map);
+          on(navToolbar, "onExtentHistoryChange", extentHistoryChangeHandler);
+
+          registry.byId("zoomin").on("click", function () {
+            navToolbar.activate(Navigation.ZOOM_IN);
+          });
+
+          registry.byId("zoomout").on("click", function () {
+            navToolbar.activate(Navigation.ZOOM_OUT);
+          });
+
+          //registry.byId("zoomfullext").on("click", function () {
+          //  navToolbar.zoomToFullExtent();
+          //});
+
+          registry.byId("zoomprev").on("click", function () {
+            navToolbar.zoomToPrevExtent();
+          });
+
+          registry.byId("zoomnext").on("click", function () {
+            navToolbar.zoomToNextExtent();
+          });
+
+          registry.byId("pan").on("click", function () {
+            navToolbar.activate(Navigation.PAN);
+          });
+
+          registry.byId("deactivate").on("click", function () {
+            navToolbar.deactivate();
+          });
+
 	//------------------------
 	//-- all functions --
 	//------------------------
+	function extentHistoryChangeHandler () {
+        registry.byId("zoomprev").disabled = navToolbar.isFirstExtent();
+		registry.byId("zoomnext").disabled = navToolbar.isLastExtent();
+    }
+		  
 	function fSetPrinter() {
 			var printTitle = "MCA - Indonesia"
 			var printUrl = "http://sampleserver6.arcgisonline.com/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task";
-			
-			esriConfig.defaults.io.proxyUrl = "/mcai_dev/proxy";
+			esriConfig.defaults.io.proxyUrl = "/proxy";
 			
 			var layoutTemplate, templateNames, mapOnlyIndex, templates;
           
@@ -195,6 +239,9 @@ require([
 	}
 
 	function fLoadAllLayers() {
+		var imageParameters = new ImageParameters();
+        imageParameters.format = "PNG32"; //set the image type to PNG24, note default is PNG8.
+		
 		var infoTemplate = new InfoTemplate();
         infoTemplate.setTitle("Information");
         //infoTemplate.setContent("
@@ -251,7 +298,7 @@ require([
 		
 		/*
 		landscapeFeatureLayer = new FeatureLayer(iMapServicesFolder + "indonesia/MapServer/207", {
-			mode: FeatureLayer.MODE_SNAPSHOT,
+			mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, 
 			infoTemplate: infoTemplate,
 			opacity: 0,
 			outFields: ["*"]
@@ -262,7 +309,7 @@ require([
 		//----- administrative group -----
 		lyr12 = new FeatureLayer(iFeatureFolder + "12", {
 			id:"12",
-			mode: FeatureLayer.MODE_SNAPSHOT,
+			mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, 
 			infoTemplate: infoTemplateDetail,
 			outFields: ["*"]
 		});
@@ -270,14 +317,14 @@ require([
 		
 		lyr11 = new FeatureLayer(iFeatureFolder + "11", {
 			id:"11",
-			mode: FeatureLayer.MODE_SNAPSHOT,
+			mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, 
 			infoTemplate: infoTemplate,
 			outFields: ["*"]
 		});
 		legendAdministrative.push({ layer: lyr11, title: 'Sub District Boundary'});
 		lyr10 = new FeatureLayer(iFeatureFolder + "10", {
 			id:"10",
-			mode: FeatureLayer.MODE_SNAPSHOT,
+			mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, 
 			infoTemplate: infoTemplate,
 			outFields: ["*"]
 		});
@@ -288,245 +335,245 @@ require([
 		legendAdministrative.push({ layer: lyr8, title: 'Capital District'});
 		
 		//----- agriculture group -----
-		lyr14 = new FeatureLayer(iFeatureFolder + "14", {id:"14", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr14 = new FeatureLayer(iFeatureFolder + "14", {id:"14", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendAgriculture.push({ layer: lyr14, title: 'Plantation Concession'});
 		
 		//----- carbon project -----
-		lyr20 = new FeatureLayer(iFeatureFolder + "20", {id:"20", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr20 = new FeatureLayer(iFeatureFolder + "20", {id:"20", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendCarbonProject.push({ layer: lyr20, title: 'Carbon Stock 2011 (MoF)'});
-		lyr19 = new FeatureLayer(iFeatureFolder + "19", {id:"19", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr19 = new FeatureLayer(iFeatureFolder + "19", {id:"19", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendCarbonProject.push({ layer: lyr19, title: 'Berbak NP Carbon Initiative'});
-		lyr18 = new FeatureLayer(iFeatureFolder + "18", {id:"18", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr18 = new FeatureLayer(iFeatureFolder + "18", {id:"18", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendCarbonProject.push({ layer: lyr18, title: 'Sampling Location (ICRAF)'});
-		lyr17 = new FeatureLayer(iFeatureFolder + "17", {id:"17", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr17 = new FeatureLayer(iFeatureFolder + "17", {id:"17", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendCarbonProject.push({ layer: lyr17, title: 'Permanent Forest Plots (ZSL)'});
-		lyr16 = new FeatureLayer(iFeatureFolder + "16", {id:"16", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr16 = new FeatureLayer(iFeatureFolder + "16", {id:"16", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendCarbonProject.push({ layer: lyr16, title: 'Carbon Measurement Points (ZSL)'});
 		
 		//----- climate -----
-		lyr22 = new FeatureLayer(iFeatureFolder + "22", {id:"22", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr22 = new FeatureLayer(iFeatureFolder + "22", {id:"22", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendClimate.push({ layer: lyr22, title: 'Rain Falls'});
 		
 		//----- ecology -----
-		lyr31 = new FeatureLayer(iFeatureFolder + "31", {id:"31", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr31 = new FeatureLayer(iFeatureFolder + "31", {id:"31", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendEcology.push({ layer: lyr31, title: 'Important Ecosystem'});
-		lyr30 = new FeatureLayer(iFeatureFolder + "30", {id:"30", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr30 = new FeatureLayer(iFeatureFolder + "30", {id:"30", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendEcology.push({ layer: lyr30, title: 'Ecoregion (WWF)'});
-		lyr29 = new FeatureLayer(iFeatureFolder + "29", {id:"29", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr29 = new FeatureLayer(iFeatureFolder + "29", {id:"29", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendEcology.push({ layer: lyr29, title: 'HCV 3 – Endangered Ecosystem'});
-		lyr28 = new FeatureLayer(iFeatureFolder + "28", {id:"28", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr28 = new FeatureLayer(iFeatureFolder + "28", {id:"28", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendEcology.push({ layer: lyr28, title: 'HCV 2 – Important Natural Landscapes'});
-		lyr27 = new FeatureLayer(iFeatureFolder + "27", {id:"27", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr27 = new FeatureLayer(iFeatureFolder + "27", {id:"27", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendEcology.push({ layer: lyr27, title: 'HCV 1.2 - Threatened and Endangered Species (WWF)'});
-		lyr26 = new FeatureLayer(iFeatureFolder + "26", {id:"26", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr26 = new FeatureLayer(iFeatureFolder + "26", {id:"26", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendEcology.push({ layer: lyr26, title: 'HCV 1.1 - Wild Plant Sanctuaries (WWF)'});
-		lyr25 = new FeatureLayer(iFeatureFolder + "25", {id:"25", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr25 = new FeatureLayer(iFeatureFolder + "25", {id:"25", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendEcology.push({ layer: lyr25, title: 'Elephant Distribution'});
-		lyr24 = new FeatureLayer(iFeatureFolder + "24", {id:"24", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr24 = new FeatureLayer(iFeatureFolder + "24", {id:"24", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendEcology.push({ layer: lyr24, title: 'Tiger Distribution'});
 				
 		//----- energy -----
-		lyr36 = new FeatureLayer(iFeatureFolder + "36", {id:"36", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr36 = new FeatureLayer(iFeatureFolder + "36", {id:"36", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendEnergy.push({ layer: lyr36, title: 'Transmission Line'});
-		lyr35 = new FeatureLayer(iFeatureFolder + "35", {id:"35", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr35 = new FeatureLayer(iFeatureFolder + "35", {id:"35", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendEnergy.push({ layer: lyr35, title: 'Power Plants (Muaro Jambi)'});
-		lyr34 = new FeatureLayer(iFeatureFolder + "34", {id:"34", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr34 = new FeatureLayer(iFeatureFolder + "34", {id:"34", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendEnergy.push({ layer: lyr34, title: 'Power Plants (Merangin)'});
-		lyr33 = new FeatureLayer(iFeatureFolder + "33", {id:"33", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr33 = new FeatureLayer(iFeatureFolder + "33", {id:"33", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendEnergy.push({ layer: lyr33, title: 'RE Microhydro (Merangin)'});
 		
 		//----- forestry -----
-		lyr45 = new FeatureLayer(iFeatureFolder + "45", {id:"45", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr45 = new FeatureLayer(iFeatureFolder + "45", {id:"45", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendForestry.push({ layer: lyr45, title: 'Existing Forest Cover'});
-		lyr44 = new FeatureLayer(iFeatureFolder + "44", {id:"44", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr44 = new FeatureLayer(iFeatureFolder + "44", {id:"44", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendForestry.push({ layer: lyr44, title: 'Tenurial Forest'});
-		lyr43 = new FeatureLayer(iFeatureFolder + "43", {id:"43", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr43 = new FeatureLayer(iFeatureFolder + "43", {id:"43", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendForestry.push({ layer: lyr43, title: 'Village Forest'});
-		lyr42 = new FeatureLayer(iFeatureFolder + "42", {id:"42", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr42 = new FeatureLayer(iFeatureFolder + "42", {id:"42", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendForestry.push({ layer: lyr42, title: 'Rimba Corridor'});
-		lyr41 = new FeatureLayer(iFeatureFolder + "41", {id:"41", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr41 = new FeatureLayer(iFeatureFolder + "41", {id:"41", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendForestry.push({ layer: lyr41, title: 'Forest Management Unit'});
-		lyr40 = new FeatureLayer(iFeatureFolder + "40", {id:"40", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr40 = new FeatureLayer(iFeatureFolder + "40", {id:"40", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendForestry.push({ layer: lyr40, title: 'Forest Conservation Activities'});
-		lyr39 = new FeatureLayer(iFeatureFolder + "39", {id:"39", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr39 = new FeatureLayer(iFeatureFolder + "39", {id:"39", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendForestry.push({ layer: lyr39, title: 'Forest Production Moratorium'});
-		lyr38 = new FeatureLayer(iFeatureFolder + "38", {id:"38", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr38 = new FeatureLayer(iFeatureFolder + "38", {id:"38", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendForestry.push({ layer: lyr38, title: 'Forest Status'});
 		
 		/*
 		//----- hazard vulnerability -----
-		lyr52 = new FeatureLayer(iFeatureFolder + "52", {id:"52", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr52 = new FeatureLayer(iFeatureFolder + "52", {id:"52", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendHazardVunerabillity.push({ layer: lyr52, title: 'Dryness BNPB'});
-		lyr51 = new FeatureLayer(iFeatureFolder + "51", {id:"51", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr51 = new FeatureLayer(iFeatureFolder + "51", {id:"51", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendHazardVunerabillity.push({ layer: lyr51, title: 'Earthquake BNPB'});
-		lyr50 = new FeatureLayer(iFeatureFolder + "50", {id:"50", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr50 = new FeatureLayer(iFeatureFolder + "50", {id:"50", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendHazardVunerabillity.push({ layer: lyr50, title: 'Flood BNPB'});
-		lyr49 = new FeatureLayer(iFeatureFolder + "49", {id:"49", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr49 = new FeatureLayer(iFeatureFolder + "49", {id:"49", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendHazardVunerabillity.push({ layer: lyr49, title: 'Forest File and Land BNPB'});
 		*/
 		
 		//----- hotspot -----
-		lyr55 = new FeatureLayer(iFeatureFolder + "55", {id:"55", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr55 = new FeatureLayer(iFeatureFolder + "55", {id:"55", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendHotspot.push({ layer: lyr55, title: 'Hotspot Distribution (2012)'});
-		lyr54 = new FeatureLayer(iFeatureFolder + "54", {id:"54", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr54 = new FeatureLayer(iFeatureFolder + "54", {id:"54", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendHotspot.push({ layer: lyr54, title: 'Hotspot Distribution (2011)'});
-		lyr53 = new FeatureLayer(iFeatureFolder + "53", {id:"53", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr53 = new FeatureLayer(iFeatureFolder + "53", {id:"53", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendHotspot.push({ layer: lyr53, title: 'Hotspot Distribution (2010)'});
-		lyr52 = new FeatureLayer(iFeatureFolder + "52", {id:"52", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr52 = new FeatureLayer(iFeatureFolder + "52", {id:"52", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendHotspot.push({ layer: lyr52, title: 'Hotspot Distribution (1999 - 2009) '});
 		
 		//----- hydrology -----
-		lyr69 = new FeatureLayer(iFeatureFolder + "69", {id:"69", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr69 = new FeatureLayer(iFeatureFolder + "69", {id:"69", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendHydrology.push({ layer: lyr69, title: 'Watershed Boundary'});
-		lyr68 = new FeatureLayer(iFeatureFolder + "68", {id:"68", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr68 = new FeatureLayer(iFeatureFolder + "68", {id:"68", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendHydrology.push({ layer: lyr68, title: 'River - Tebo'});
-		lyr67 = new FeatureLayer(iFeatureFolder + "67", {id:"67", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr67 = new FeatureLayer(iFeatureFolder + "67", {id:"67", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendHydrology.push({ layer: lyr67, title: 'River - Tanjung JabungTimur'});
-		lyr66 = new FeatureLayer(iFeatureFolder + "66", {id:"66", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr66 = new FeatureLayer(iFeatureFolder + "66", {id:"66", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendHydrology.push({ layer: lyr66, title: 'River - Tanjung Jabung Barat'});
-		lyr65 = new FeatureLayer(iFeatureFolder + "65", {id:"65", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr65 = new FeatureLayer(iFeatureFolder + "65", {id:"65", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendHydrology.push({ layer: lyr65, title: 'River - Sungai Penuh'});
-		lyr64 = new FeatureLayer(iFeatureFolder + "64", {id:"64", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr64 = new FeatureLayer(iFeatureFolder + "64", {id:"64", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendHydrology.push({ layer: lyr64, title: 'River - Sarolangun'});
-		lyr63 = new FeatureLayer(iFeatureFolder + "63", {id:"63", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr63 = new FeatureLayer(iFeatureFolder + "63", {id:"63", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendHydrology.push({ layer: lyr63, title: 'River - Muaro Jambi'});
-		lyr62 = new FeatureLayer(iFeatureFolder + "62", {id:"62", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr62 = new FeatureLayer(iFeatureFolder + "62", {id:"62", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendHydrology.push({ layer: lyr62, title: 'River - Merangin'});
-		lyr61 = new FeatureLayer(iFeatureFolder + "61", {id:"61", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr61 = new FeatureLayer(iFeatureFolder + "61", {id:"61", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendHydrology.push({ layer: lyr61, title: 'River - Kerinci'});
-		lyr60 = new FeatureLayer(iFeatureFolder + "60", {id:"60", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr60 = new FeatureLayer(iFeatureFolder + "60", {id:"60", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendHydrology.push({ layer: lyr60, title: 'River - Kota Jambi'});
-		lyr59 = new FeatureLayer(iFeatureFolder + "59", {id:"59", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr59 = new FeatureLayer(iFeatureFolder + "59", {id:"59", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendHydrology.push({ layer: lyr59, title: 'River - Bungo'});
-		lyr58 = new FeatureLayer(iFeatureFolder + "58", {id:"58", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr58 = new FeatureLayer(iFeatureFolder + "58", {id:"58", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendHydrology.push({ layer: lyr58, title: 'River - Batanghari'});
-		lyr57 = new FeatureLayer(iFeatureFolder + "57", {id:"57", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr57 = new FeatureLayer(iFeatureFolder + "57", {id:"57", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendHydrology.push({ layer: lyr57, title: 'Main River'});
 		
 		//----- Infrastructure -----
-		lyr82 = new FeatureLayer(iFeatureFolder + "82", {id:"82", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr82 = new FeatureLayer(iFeatureFolder + "82", {id:"82", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendInfrastructure.push({ layer: lyr82, title: 'Other Road - Tebo'});
-		lyr81 = new FeatureLayer(iFeatureFolder + "81", {id:"81", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr81 = new FeatureLayer(iFeatureFolder + "81", {id:"81", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendInfrastructure.push({ layer: lyr81, title: 'Other Road - Tanjung JabungTimur'});
-		lyr80 = new FeatureLayer(iFeatureFolder + "80", {id:"80", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr80 = new FeatureLayer(iFeatureFolder + "80", {id:"80", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendInfrastructure.push({ layer: lyr80, title: 'Other Road - Tanjung Jabung Barat'});
-		lyr79 = new FeatureLayer(iFeatureFolder + "79", {id:"79", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr79 = new FeatureLayer(iFeatureFolder + "79", {id:"79", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendInfrastructure.push({ layer: lyr79, title: 'Other Road - Sungai Penuh'});
-		lyr78 = new FeatureLayer(iFeatureFolder + "78", {id:"78", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr78 = new FeatureLayer(iFeatureFolder + "78", {id:"78", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendInfrastructure.push({ layer: lyr78, title: 'Other Road - Sarolangun'});
-		lyr77 = new FeatureLayer(iFeatureFolder + "77", {id:"77", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr77 = new FeatureLayer(iFeatureFolder + "77", {id:"77", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendInfrastructure.push({ layer: lyr77, title: 'Other Road - Muaro Jambi'});
-		lyr76 = new FeatureLayer(iFeatureFolder + "76", {id:"76", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr76 = new FeatureLayer(iFeatureFolder + "76", {id:"76", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendInfrastructure.push({ layer: lyr76, title: 'Other Road - Merangin'});
-		lyr75 = new FeatureLayer(iFeatureFolder + "75", {id:"75", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr75 = new FeatureLayer(iFeatureFolder + "75", {id:"75", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendInfrastructure.push({ layer: lyr75, title: 'Other Road - Kerinci'});
-		lyr74 = new FeatureLayer(iFeatureFolder + "74", {id:"74", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr74 = new FeatureLayer(iFeatureFolder + "74", {id:"74", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendInfrastructure.push({ layer: lyr74, title: 'Other Road - Kota Jambi'});
-		lyr73 = new FeatureLayer(iFeatureFolder + "73", {id:"73", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr73 = new FeatureLayer(iFeatureFolder + "73", {id:"73", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendInfrastructure.push({ layer: lyr73, title: 'Other Road - Bungo'});
-		lyr72 = new FeatureLayer(iFeatureFolder + "72", {id:"72", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr72 = new FeatureLayer(iFeatureFolder + "72", {id:"72", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendInfrastructure.push({ layer: lyr72, title: 'Other Road - Batanghari'});
-		lyr71 = new FeatureLayer(iFeatureFolder + "71", {id:"71", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr71 = new FeatureLayer(iFeatureFolder + "71", {id:"71", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendInfrastructure.push({ layer: lyr71, title: 'Main Road'});
 		
 		//----- Landcover -----
-		lyr94 = new FeatureLayer(iFeatureFolder + "94", {id:"94", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr94 = new FeatureLayer(iFeatureFolder + "94", {id:"94", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendLandcover.push({ layer: lyr94, title: 'Landcover 2011 - Tebo'});
-		lyr93 = new FeatureLayer(iFeatureFolder + "93", {id:"93", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr93 = new FeatureLayer(iFeatureFolder + "93", {id:"93", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendLandcover.push({ layer: lyr93, title: 'Landcover 2011 - Tanjung JabungTimur'});
-		lyr92 = new FeatureLayer(iFeatureFolder + "92", {id:"92", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr92 = new FeatureLayer(iFeatureFolder + "92", {id:"92", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendLandcover.push({ layer: lyr92, title: 'Landcover 2011 - Tanjung Jabung Barat'});
-		lyr91 = new FeatureLayer(iFeatureFolder + "91", {id:"91", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr91 = new FeatureLayer(iFeatureFolder + "91", {id:"91", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendLandcover.push({ layer: lyr91, title: 'Landcover 2011 - Sungai Penuh'});
-		lyr90 = new FeatureLayer(iFeatureFolder + "90", {id:"90", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr90 = new FeatureLayer(iFeatureFolder + "90", {id:"90", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendLandcover.push({ layer: lyr90, title: 'Landcover 2011 - Sarolangun'});
-		lyr89 = new FeatureLayer(iFeatureFolder + "89", {id:"89", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr89 = new FeatureLayer(iFeatureFolder + "89", {id:"89", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendLandcover.push({ layer: lyr89, title: 'Landcover 2011 - Muaro Jambi'});
-		lyr88 = new FeatureLayer(iFeatureFolder + "88", {id:"88", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr88 = new FeatureLayer(iFeatureFolder + "88", {id:"88", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendLandcover.push({ layer: lyr88, title: 'Landcover 2011 - Merangin'});
-		lyr87 = new FeatureLayer(iFeatureFolder + "87", {id:"87", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr87 = new FeatureLayer(iFeatureFolder + "87", {id:"87", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendLandcover.push({ layer: lyr87, title: 'Landcover 2011 - Kerinci'});
-		lyr86 = new FeatureLayer(iFeatureFolder + "86", {id:"86", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr86 = new FeatureLayer(iFeatureFolder + "86", {id:"86", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendLandcover.push({ layer: lyr86, title: 'Landcover 2011 - Kota Jambi'});
-		lyr85 = new FeatureLayer(iFeatureFolder + "85", {id:"85", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr85 = new FeatureLayer(iFeatureFolder + "85", {id:"85", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendLandcover.push({ layer: lyr85, title: 'Landcover 2011 - Bungo'});
-		lyr84 = new FeatureLayer(iFeatureFolder + "84", {id:"84", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr84 = new FeatureLayer(iFeatureFolder + "84", {id:"84", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendLandcover.push({ layer: lyr84, title: 'Landcover 2011 - Batanghari'});
 		
 		//----- landscape -----
-		lyr97 = new FeatureLayer(iFeatureFolder + "97", {id:"97", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr97 = new FeatureLayer(iFeatureFolder + "97", {id:"97", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendLandscape.push({ layer: lyr97, title: 'Sungai Tenang'});
-		lyr96 = new FeatureLayer(iFeatureFolder + "96", {id:"96", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr96 = new FeatureLayer(iFeatureFolder + "96", {id:"96", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendLandscape.push({ layer: lyr96, title: 'Berbak'});
 		
 		//----- land degradation -----
-		lyr99 = new FeatureLayer(iFeatureFolder + "99", {id:"99", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr99 = new FeatureLayer(iFeatureFolder + "99", {id:"99", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendLandDegradation.push({ layer: lyr99, title: 'Critical Land'});
 		
 		//----- landuse spatial plan -----
-		lyr101 = new FeatureLayer(iFeatureFolder + "101", {id:"101", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr101 = new FeatureLayer(iFeatureFolder + "101", {id:"101", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendLanduseSpatialPlan.push({ layer: lyr101, title: 'Draft RTRWP Jambi (2011)'});
 		
 		//----- mining -----
-		lyr104 = new FeatureLayer(iFeatureFolder + "104", {id:"104", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr104 = new FeatureLayer(iFeatureFolder + "104", {id:"104", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendMining.push({ layer: lyr104, title: 'Oil and Gas Concession'});
-		lyr103 = new FeatureLayer(iFeatureFolder + "103", {id:"103", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr103 = new FeatureLayer(iFeatureFolder + "103", {id:"103", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendMining.push({ layer: lyr103, title: 'Mining Concession'});
 		
 		//----- permits -----
-		lyr113 = new FeatureLayer(iFeatureFolder + "113", {id:"113", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr113 = new FeatureLayer(iFeatureFolder + "113", {id:"113", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendPermits.push({ layer: lyr113, title: 'Permit to Utilize Forest Product in Ecological Restoration'});
-		lyr112 = new FeatureLayer(iFeatureFolder + "112", {id:"112", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr112 = new FeatureLayer(iFeatureFolder + "112", {id:"112", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendPermits.push({ layer: lyr112, title: 'Permit to Utilize Forest Product in Community Timber Estate'});
-		lyr111 = new FeatureLayer(iFeatureFolder + "111", {id:"111", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr111 = new FeatureLayer(iFeatureFolder + "111", {id:"111", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendPermits.push({ layer: lyr111, title: 'Permit to Utilize Forest Product in Timber Estate'});
-		lyr110 = new FeatureLayer(iFeatureFolder + "110", {id:"110", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr110 = new FeatureLayer(iFeatureFolder + "110", {id:"110", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendPermits.push({ layer: lyr110, title: 'Permit to Utilize Forest Product in Natural Forest'});
-		lyr109 = new FeatureLayer(iFeatureFolder + "109", {id:"109", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr109 = new FeatureLayer(iFeatureFolder + "109", {id:"109", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendPermits.push({ layer: lyr109, title: 'Land Cultivation Right (HGU)'});
-		lyr108 = new FeatureLayer(iFeatureFolder + "108", {id:"108", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr108 = new FeatureLayer(iFeatureFolder + "108", {id:"108", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendPermits.push({ layer: lyr108, title: 'Forest Land Swap (IPPKH)'});
-		lyr107 = new FeatureLayer(iFeatureFolder + "107", {id:"107", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr107 = new FeatureLayer(iFeatureFolder + "107", {id:"107", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendPermits.push({ layer: lyr107, title: 'Forest Conversion to Plantation Development'});
-		lyr106 = new FeatureLayer(iFeatureFolder + "106", {id:"106", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr106 = new FeatureLayer(iFeatureFolder + "106", {id:"106", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendPermits.push({ layer: lyr106, title: 'Forest Conversion to Transmigration Development'});
 		
 		//----- socio economic -----
-		lyr116 = new FeatureLayer(iFeatureFolder + "116", {id:"116", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr116 = new FeatureLayer(iFeatureFolder + "116", {id:"116", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendSocioEconomic.push({ layer: lyr116, title: 'Population Distribution'});
-		lyr115 = new FeatureLayer(iFeatureFolder + "115", {id:"115", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr115 = new FeatureLayer(iFeatureFolder + "115", {id:"115", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendSocioEconomic.push({ layer: lyr115, title: 'Indigenous People'});
 		
 		//----- soil -----
-		lyr120 = new FeatureLayer(iFeatureFolder + "120", {id:"120", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr120 = new FeatureLayer(iFeatureFolder + "120", {id:"120", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendSoil.push({ layer: lyr120, title: 'Peat Soil'});
-		lyr119 = new FeatureLayer(iFeatureFolder + "119", {id:"119", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr119 = new FeatureLayer(iFeatureFolder + "119", {id:"119", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendSoil.push({ layer: lyr119, title: 'Soil'});
-		lyr118 = new FeatureLayer(iFeatureFolder + "118", {id:"118", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr118 = new FeatureLayer(iFeatureFolder + "118", {id:"118", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendSoil.push({ layer: lyr118, title: 'Fault'});
 		
 		//----- topography -----
-		lyr132 = new FeatureLayer(iFeatureFolder + "132", {id:"132", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr132 = new FeatureLayer(iFeatureFolder + "132", {id:"132", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendTopography.push({ layer: lyr132, title: 'Contour Line - Tebo'});
-		lyr131 = new FeatureLayer(iFeatureFolder + "131", {id:"131", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr131 = new FeatureLayer(iFeatureFolder + "131", {id:"131", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendTopography.push({ layer: lyr131, title: 'Contour Line - Tanjung JabungTimur'});
-		lyr130 = new FeatureLayer(iFeatureFolder + "130", {id:"130", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr130 = new FeatureLayer(iFeatureFolder + "130", {id:"130", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendTopography.push({ layer: lyr130, title: 'Contour Line - Tanjung Jabung Barat'});
-		lyr129 = new FeatureLayer(iFeatureFolder + "129", {id:"129", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr129 = new FeatureLayer(iFeatureFolder + "129", {id:"129", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendTopography.push({ layer: lyr129, title: 'Contour Line - Sungai Penuh'});
-		lyr128 = new FeatureLayer(iFeatureFolder + "128", {id:"128", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr128 = new FeatureLayer(iFeatureFolder + "128", {id:"128", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendTopography.push({ layer: lyr128, title: 'Contour Line - Sarolangun'});
-		lyr127 = new FeatureLayer(iFeatureFolder + "127", {id:"127", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr127 = new FeatureLayer(iFeatureFolder + "127", {id:"127", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendTopography.push({ layer: lyr127, title: 'Contour Line - Muaro Jambi'});
-		lyr126 = new FeatureLayer(iFeatureFolder + "126", {id:"126", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr126 = new FeatureLayer(iFeatureFolder + "126", {id:"126", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendTopography.push({ layer: lyr126, title: 'Contour Line - Merangin'});
-		lyr125 = new FeatureLayer(iFeatureFolder + "125", {id:"125", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr125 = new FeatureLayer(iFeatureFolder + "125", {id:"125", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendTopography.push({ layer: lyr125, title: 'Contour Line - Kerinci'});
-		lyr124 = new FeatureLayer(iFeatureFolder + "124", {id:"124", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr124 = new FeatureLayer(iFeatureFolder + "124", {id:"124", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendTopography.push({ layer: lyr124, title: 'Contour Line - Kota Jambi'});
-		lyr123 = new FeatureLayer(iFeatureFolder + "123", {id:"123", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr123 = new FeatureLayer(iFeatureFolder + "123", {id:"123", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendTopography.push({ layer: lyr123, title: 'Contour Line - Bungo'});
-		lyr122 = new FeatureLayer(iFeatureFolder + "122", {id:"122", mode: FeatureLayer.MODE_SNAPSHOT,infoTemplate: infoTemplate,});
+		lyr122 = new FeatureLayer(iFeatureFolder + "122", {id:"122", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendTopography.push({ layer: lyr122, title: 'Contour Line - Batanghari'});
 		
 		map.addLayers([
@@ -599,6 +646,11 @@ require([
 		
 		console.log("load service layer success");
 	}
+	
+	function calcOffset() {
+		//return (map.extent.getWidth() / map.width);
+	}
+
 	function fAddLabelLayers() {
 		try {
 			var labelField = "City_name";

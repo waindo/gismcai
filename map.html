@@ -51,7 +51,7 @@
 </style>
 <![endif]-->
 <div id='loadingDiv' style='position:absolute; left:50%; top:50%; padding:2px; z-index:20001; height:auto; font:bold 13px tahoma,arial,helvetica;'>
-    	<img src='./images/loading3.gif'>&nbsp;&nbsp;<span id="loading-msg">Loading...</span>
+    	<img src='./images/loading.gif'>&nbsp;&nbsp;<span id="loading-msg">Loading...</span>
 </div>
 
 <div id="contentMCAI" data-dojo-type="dijit/layout/BorderContainer"
@@ -221,10 +221,21 @@
        data-dojo-type="dijit/layout/ContentPane"
        data-dojo-props="region:'center'"       
 	   >
-	   <img id="loadingImg" src="./images/loading.gif" style="position:absolute; right:512px; top:256px; z-index:100;" />
+	   <!--<img id="loadingImg" src="./images/loading5.gif" style="position:absolute; right:512px; top:256px; z-index:100;" />-->
+	   
+		<div id="navToolbar" data-dojo-type="dijit/Toolbar">
+			<div data-dojo-type="dijit/form/Button" id="zoomin"  data-dojo-props="iconClass:'zoominIcon'">Zoom In</div>
+			<div data-dojo-type="dijit/form/Button" id="zoomout" data-dojo-props="iconClass:'zoomoutIcon'">Zoom Out</div>
+			<!--<div data-dojo-type="dijit/form/Button" id="zoomfullext" data-dojo-props="iconClass:'zoomfullextIcon'">Full Extent</div>-->
+			<div data-dojo-type="dijit/form/Button" id="zoomprev" data-dojo-props="iconClass:'zoomprevIcon'">Prev Extent</div>
+			<div data-dojo-type="dijit/form/Button" id="zoomnext" data-dojo-props="iconClass:'zoomnextIcon'">Next Extent</div>
+			<div data-dojo-type="dijit/form/Button" id="pan" data-dojo-props="iconClass:'panIcon'">Pan</div>
+			<div data-dojo-type="dijit/form/Button" id="deactivate" data-dojo-props="iconClass:'deactivateIcon'">Deactivate</div>
+		</div>
+
 	   <div id="HomeButton"></div>
 	   
-	   <div style="position:absolute; left:20px; top:10px; z-Index:999;">
+	   <div style="position:absolute; left:20px; top:50px; z-Index:999;">
           <div data-dojo-type="dijit/TitlePane" 
                data-dojo-props="title:'Legend', closable:false,  open:false">
             <div data-dojo-type="dijit/layout/ContentPane" style="width:380px; height:280px; overflow:auto;">
