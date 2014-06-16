@@ -30,7 +30,7 @@ html, body {
 
 #HomeButton {
 	position: absolute;
-    top: 250px;
+    top: 280px;
     right: 24px;
 	z-index: 50;
 }
@@ -63,10 +63,7 @@ html, body {
 }
 
 #legendDiv {
-	height: 130px;
-	overflow: auto;
-	overflow-x: auto;
-	overflow-y: auto;
+
 }
 
 #measurementDiv {
@@ -131,3 +128,45 @@ html, body {
 #scaleDiv .agsjsTOCOutOfScale {
 	display:none; 
 	}
+	
+	.zoominIcon {
+        background-image: url(../images/nav_zoomin.png);
+        width: 16px;
+        height: 16px;
+      }
+
+      .zoomoutIcon {
+        background-image: url(../images/nav_zoomout.png);
+        width: 16px;
+        height: 16px;
+      }
+
+      .zoomfullextIcon {
+        background-image: url(../images/nav_fullextent.png);
+        width: 16px;
+        height: 16px;
+      }
+
+      .zoomprevIcon {
+        background-image: url(../images/nav_previous.png);
+        width: 16px;
+        height: 16px;
+      }
+
+      .zoomnextIcon {
+        background-image: url(../images/nav_next.png);
+        width: 16px;
+        height: 16px;
+      }
+
+      .panIcon {
+        background-image: url(../images/nav_pan.png);
+        width: 16px;
+        height: 16px;
+      }
+
+      .deactivateIcon {
+        background-image: url(../images/nav_decline.png);
+        width: 16px;
+        height: 16px;
+      }
