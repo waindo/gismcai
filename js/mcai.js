@@ -6,7 +6,7 @@ var legendPermits = [], legendLanduseSpatialPlan = [], legendSocioEconomic = [],
 var legendLayers = [], legendTopography = [], legendRainFalls = [], legendAdministrative = [];
 var legendLandscape = [];
 
-var iAlamatLokal = "192.168.0.213";
+var iAlamatLokal = "localhost";
 var iMapServicesFolder = "http://" + iAlamatLokal + ":6080/arcgis/rest/services/data/";
 var iFeatureFolder = iMapServicesFolder + "indonesia3/MapServer/";
 
