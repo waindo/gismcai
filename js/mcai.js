@@ -50,7 +50,10 @@ require([
 	"dojo/_base/connect",
 	"dojo/_base/Color",
 	"dojo/store/Memory",
+	"dojo/json",
   
+	"dojo/text!./data/dtProvince.json",
+	
 	"dijit/form/CheckBox",
 	"dijit/form/ComboBox",
 	"dijit/form/RadioButton",
@@ -81,7 +84,8 @@ require([
 			FeatureLayer, ArcGISTiledMapServiceLayer, ArcGISDynamicMapServiceLayer, ImageParameters,  LabelLayer, 
 			SimpleLineSymbol, SimpleFillSymbol, TextSymbol, ClassBreaksRenderer, SimpleRenderer, 
 			Extent, Navigation, Print, PrintTemplate, esriRequest, esriConfig,
-		domConstruct, dom, on, parser, query, arrayUtils, connect, Color, Memory, 
+		domConstruct, dom, on, parser, query, arrayUtils, connect, Color, Memory, JSON, 
+		dtProvince, 
 		CheckBox, ComboBox, RadioButton, Button, HorizontalSlider, 
 			AccordionContainer, BorderContainer, ContentPane, 
 			TitlePane, MenuBar, PopupMenuBarItem, Menu, MenuItem, DropDownMenu, TabContainer, Toolbar, registry,
@@ -111,11 +115,11 @@ require([
 		
 		//dojo.connect(map, "onUpdateStart", fShowLoading);
         //dojo.connect(map, "onUpdateEnd", fHideLoading);
-		
+        dojo.connect(map, "onUpdateEnd", fCheckLegendDiv);
 		
   
 		fLoadAllLayers();
-		fAddLabelLayers();
+        fCreateLabelLayers("City_name", "capital", iFeatureFolder + "8");
 		fHideAllFeatureLayers();	
 		fSetLegend();		
 		fKosongDiv();
@@ -169,18 +173,21 @@ require([
             navToolbar.activate(Navigation.PAN);
           });
 
+		  /*
           registry.byId("deactivate").on("click", function () {
             navToolbar.deactivate();
           });
+		  */
 
 	//------------------------
 	//-- all functions --
 	//------------------------
+	
+	//----- only for fix/reusable code/function -----
 	function extentHistoryChangeHandler () {
         registry.byId("zoomprev").disabled = navToolbar.isFirstExtent();
 		registry.byId("zoomnext").disabled = navToolbar.isLastExtent();
-    }
-		  
+    }   
 	function fSetPrinter() {
 			var printTitle = "MCA - Indonesia"
 			var printUrl = "http://sampleserver6.arcgisonline.com/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task";
@@ -225,8 +232,7 @@ require([
 				url: printUrl
 			}, dom.byId("printButton"));
 			printer.startup();
-		}
-		  
+	}
 	function fShowLoading() {
 	  esri.show(loading);
 	  map.disableMapNavigation();
@@ -237,7 +243,114 @@ require([
 	  map.enableMapNavigation();
 	  map.showZoomSlider();
 	}
+	function fCreateSlider(iLayerIDStart, iLayerIDEnd, iSliderDivName) {
+		slider = new HorizontalSlider({
+		name: "slider" + iLayerIDStart,
+		value: 1,
+		minimum: 0,
+		maximum: 1,
+		intermediateChanges: true,
+		style: "250px",
+		onChange: function(value){
+				for (var i = iLayerIDStart; i <= iLayerIDEnd; i++) {
+					map.getLayer(i).setOpacity(value);
+				}			
+			}
+		}, iSliderDivName);
+	}
+	function fCreateLabelLayers(iLabelField, iIdField, iLayerURL ) {
+	    var labelField = iLabelField;
 
+	    // create a renderer for the capital layer to override default symbology
+	    var capitalColor = new esri.Color("#666");
+	    var capitalLine = new SimpleLineSymbol("solid", capitalColor, 1.5);
+	    var capitalSymbol = new SimpleFillSymbol("solid", capitalLine, null);
+	    var capitalRenderer = new SimpleRenderer(capitalSymbol);
+	    // create a feature layer to show country boundaries
+	    var capitalUrl = iLayerURL;
+	    capitalLayer = new FeatureLayer(capitalUrl, {
+		    id: iIdField,
+		    outFields: [labelField] 
+	    });
+	    capitalLayer.setRenderer(capitalRenderer);
+	    map.addLayer(capitalLayer);
+		    // create a text symbol to define the style of labels
+	    var capitalLabel = new TextSymbol().setColor(capitalColor);
+	    capitalLabel.font.setSize("10pt");
+	    capitalLabel.font.setFamily("arial");
+	    capitalLabelRenderer = new SimpleRenderer(capitalLabel);
+	    labelLayer = new LabelLayer({ id: "labels" });
+	    // tell the label layer to label the countries feature layer 
+	    // using the field named "admin"
+	    labelLayer.addFeatureLayer(capitalLayer, capitalLabelRenderer, "${" + labelField + "}");
+	    // add the label layer to the map
+	    map.addLayer(labelLayer);
+	}
+	function fCreateLegend(iLegendName, iLegendDiv) {
+        map.on('layers-add-result', function () {
+		var legenda = new Legend({
+            map: map,
+            layerInfos: iLegendName
+          }, iLegendDiv);
+          legenda.startup();
+        });
+    }
+	function fCreateCategoryGroup(iLegendName, iToggleName) {
+        map.on('layers-add-result', function () {
+          //add check boxes
+          arrayUtils.forEach(iLegendName, function (layer) {
+            var layerName = layer.title;
+            var checkBox = new CheckBox({
+              name: "checkBox" + layer.layer.id,
+              value: layer.layer.id,
+              checked: layer.layer.visible
+            });
+            checkBox.on("change", function () {
+              var targetLayer = map.getLayer(this.value);
+              targetLayer.setVisibility(!targetLayer.visible);
+              this.checked = targetLayer.visible;
+			  fAdditionalInfo(this.value);
+            });
+			
+            //add the check box and label to the toc
+            domConstruct.place(checkBox.domNode, dom.byId(iToggleName), "after");
+            var checkLabel = domConstruct.create('label', {
+                'for': checkBox.name,
+                innerHTML: layerName
+              }, checkBox.domNode, "after");
+            domConstruct.place("<br />", checkLabel, "after");
+          });
+        });        
+    }
+    function fHideLegendDiv(iLegendName, iLegendDiv) {
+        var iAktif=false;
+
+        arrayUtils.forEach(iLegendName, function (layer) {
+		if (map.getLayer(layer.layer.id).visible) {iAktif=true}});
+		if (!iAktif) {dom.byId(iLegendDiv).innerHTML="";};
+    }
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	//----- change dynamic code/function here -----	
 	function fLoadAllLayers() {
 		var imageParameters = new ImageParameters();
         imageParameters.format = "PNG32"; //set the image type to PNG24, note default is PNG8.
@@ -646,1018 +759,73 @@ require([
 		
 		console.log("load service layer success");
 	}
-	
-	function calcOffset() {
-		//return (map.extent.getWidth() / map.width);
-	}
-
-	function fAddLabelLayers() {
-		try {
-			var labelField = "City_name";
-
-			// create a renderer for the capital layer to override default symbology
-			var capitalColor = new esri.Color("#666");
-			var capitalLine = new SimpleLineSymbol("solid", capitalColor, 1.5);
-			var capitalSymbol = new SimpleFillSymbol("solid", capitalLine, null);
-			var capitalRenderer = new SimpleRenderer(capitalSymbol);
-			// create a feature layer to show country boundaries
-			var capitalUrl = iFeatureFolder + "8";
-			capitalLayer = new FeatureLayer(capitalUrl, {
-			  id: "capital",
-			  outFields: [labelField] 
-			});
-			capitalLayer.setRenderer(capitalRenderer);
-			map.addLayer(capitalLayer);
-			 // create a text symbol to define the style of labels
-			var capitalLabel = new TextSymbol().setColor(capitalColor);
-			capitalLabel.font.setSize("10pt");
-			capitalLabel.font.setFamily("arial");
-			capitalLabelRenderer = new SimpleRenderer(capitalLabel);
-			labelLayer = new LabelLayer({ id: "labels" });
-			// tell the label layer to label the countries feature layer 
-			// using the field named "admin"
-			labelLayer.addFeatureLayer(capitalLayer, capitalLabelRenderer, "${" + labelField + "}");
-			// add the label layer to the map
-			map.addLayer(labelLayer);
-		}
-		catch (err) {
-			alert ("Error found");
-			console.log (err.message);
-		}
-	}
-	
-	function fSetLegend() {
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-            map: map,
-            layerInfos: legendLayers
-          }, "legendDiv");
-          legenda.startup();
-        });
-		
-		//administrative legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-            map: map,
-            layerInfos: legendAdministrative
-          }, "legendAdministrativeDiv");
-          legenda.startup();
-        });
-		
-		//agriculture legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-            map: map,
-            layerInfos: legendAgriculture
-          }, "legendAgricultureDiv");
-          legenda.startup();
-        });
-		
-		//carbon project legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-            map: map,
-            layerInfos: legendCarbonProject
-          }, "legendCarbonProjectDiv");
-          legenda.startup();
-        });
-		
-		//climate legend 
-		//fCreateLegendDiv(legendClimate,"legendClimateDiv");
-			map.on('layers-add-result', function () {
-			var legenda = new Legend({
-				map: map,
-				layerInfos: legendClimate
-			  }, "legendClimateDiv");
-			  legenda.startup();
-			});
-			
-		//ecology legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-			map: map,
-			layerInfos: legendEcology
-		  }, "legendEcologyDiv");
-		  legenda.startup();
-		});
-		
-		//energy legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-			map: map,
-			layerInfos: legendEnergy
-		  }, "legendEnergyDiv");
-		  legenda.startup();
-		});
-		
-		//forestry legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-			map: map,
-			layerInfos: legendForestry
-		  }, "legendForestryDiv");
-		  legenda.startup();
-		});
-		/*
-		//hazard vulnerability legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-			map: map,
-			layerInfos: legendHazardVunerabillity
-		  }, "legendHazardVunerabillityDiv");
-		  legenda.startup();
-		});
-		*/
-		//hotspot legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-			map: map,
-			layerInfos: legendHotspot
-		  }, "legendHotspotDiv");
-		  legenda.startup();
-		});
-		
-		//hydrology legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-			map: map,
-			layerInfos: legendHydrology
-		  }, "legendHydrologyDiv");
-		  legenda.startup();
-		});
-		
-		//infrastructure legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-			map: map,
-			layerInfos: legendInfrastructure
-		  }, "legendInfrastructureDiv");
-		  legenda.startup();
-		});
-		
-		//landcover legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-			map: map,
-			layerInfos: legendLandcover
-		  }, "legendLandcoverDiv");
-		  legenda.startup();
-		});
-		
-		//landscape legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-			map: map,
-			layerInfos: legendLandscape
-		  }, "legendLandscapeDiv");
-		  legenda.startup();
-		});
-		
-		//land degradation legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-			map: map,
-			layerInfos: legendLandDegradation
-		  }, "legendLandDegradationDiv");
-		  legenda.startup();
-		});
-		
-		//landuse spatial plan legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-			map: map,
-			layerInfos: legendLanduseSpatialPlan
-		  }, "legendLanduseSpatialPlanDiv");
-		  legenda.startup();
-		});
-		
-		//mining legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-			map: map,
-			layerInfos: legendMining
-		  }, "legendMiningDiv");
-		  legenda.startup();
-		});
-		
-		//permits legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-			map: map,
-			layerInfos: legendPermits
-		  }, "legendPermitsDiv");
-		  legenda.startup();
-		});
-		
-		//socio economic legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-			map: map,
-			layerInfos: legendSocioEconomic
-		  }, "legendSocioEconomicDiv");
-		  legenda.startup();
-		});
-		
-		//soil legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-			map: map,
-			layerInfos: legendSoil
-		  }, "legendSoilDiv");
-		  legenda.startup();
-		});
-		
-		//topography legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-			map: map,
-			layerInfos: legendTopography
-		  }, "legendTopographyDiv");
-		  legenda.startup();
-		});		
+    function fSetLegend() {
+        fCreateLegend(legendLayers, "legendDiv");
+        fCreateLegend(legendAdministrative, "legendAdministrativeDiv");
+        fCreateLegend(legendAgriculture, "legendAgricultureDiv");
+        fCreateLegend(legendCarbonProject, "legendCarbonProjectDiv");
+        fCreateLegend(legendClimate, "legendClimateDiv");
+        fCreateLegend(legendEcology, "legendEcologyDiv");
+        fCreateLegend(legendEnergy, "legendEnergyDiv");
+        fCreateLegend(legendForestry, "legendForestryDiv");
+        //fCreateLegend(legendHazardVunerabillity, "legendHazardVunerabillityDiv");
+        fCreateLegend(legendHotspot, "legendHotspotDiv");
+        fCreateLegend(legendHydrology, "legendHydrologyDiv");
+        fCreateLegend(legendInfrastructure, "legendInfrastructureDiv");
+        fCreateLegend(legendLandcover, "legendLandcoverDiv");
+        fCreateLegend(legendLandscape, "legendLandscapeDiv");
+        fCreateLegend(legendLandDegradation, "legendLandDegradationDiv");
+        fCreateLegend(legendLanduseSpatialPlan, "legendLanduseSpatialPlanDiv");
+        fCreateLegend(legendMining, "legendMiningDiv");
+        fCreateLegend(legendPermits, "legendPermitsDiv");
+        fCreateLegend(legendSocioEconomic, "legendSocioEconomicDiv");
+        fCreateLegend(legendSoil, "legendSoilDiv");
+		fCreateLegend(legendTopography, "legendTopographyDiv");	
 	}	
-	
-	function changeTransparency(value) {
-		var layer = map.getLayer(8);
-		if(layer != null)
-		{
-			layer.setOpacity(value);
-		}
+	function fAddCategoryGroup() {
+        fCreateCategoryGroup(legendLayers, "toggleGeneral");
+        fCreateCategoryGroup(legendAdministrative, "toggleAdministrative");
+        fCreateCategoryGroup(legendAgriculture, "toggleAgriculture");
+        fCreateCategoryGroup(legendCarbonProject, "toggleCarbonProject");
+        fCreateCategoryGroup(legendClimate, "toggleClimate");
+		fCreateCategoryGroup(legendEcology, "toggleEcology");
+        fCreateCategoryGroup(legendEnergy, "toggleEnergy");
+        fCreateCategoryGroup(legendForestry, "toggleForestry");
+        //fCreateCategoryGroup(legendHazardVunerabillity, "toggleHazardVunerabillity");
+        fCreateCategoryGroup(legendHotspot, "toggleHotspot");
+        fCreateCategoryGroup(legendHydrology, "toggleHydrology");
+        fCreateCategoryGroup(legendInfrastructure, "toggleInfrastructure");
+        fCreateCategoryGroup(legendLandcover, "toggleLandcover");
+        fCreateCategoryGroup(legendLandscape, "toggleLandscape");
+        fCreateCategoryGroup(legendLandDegradation, "toggleLandDegradation");
+        fCreateCategoryGroup(legendLanduseSpatialPlan, "toggleLanduseSpatialPlan");
+		fCreateCategoryGroup(legendMining, "toggleMining");
+        fCreateCategoryGroup(legendPermits, "togglePermits");
+        fCreateCategoryGroup(legendSocioEconomic, "toggleSocioEconomic");
+        fCreateCategoryGroup(legendSoil, "toggleSoil");
+        fCreateCategoryGroup(legendTopography, "toggleTopography");
 	}
-	
-	function fAddCategoryGroup() {		
-		//----- genereal -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendLayers, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-			
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleGeneral"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- administrative -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendAdministrative, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-			
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleAdministrative"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- agriculture -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendAgriculture, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleAgriculture"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- carbon project -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendCarbonProject, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleCarbonProject"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- climate -----
-		//fCreateCheckboxToggle(legendClimate, "toggleClimate");
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendClimate, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleClimate"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- ecology -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendEcology, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleEcology"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- energy -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendEnergy, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleEnergy"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- forestry -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendForestry, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleForestry"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		/*
-		//----- hazard vulnerability -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendHazardVunerabillity, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-			
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleHazardVunerabillity"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		*/
-		
-		//----- hotspot -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendHotspot, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleHotspot"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- hydrology -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendHydrology, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleHydrology"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- infrastructure -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendInfrastructure, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleInfrastructure"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- landcover -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendLandcover, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleLandcover"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- landscape -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendLandscape, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleLandscape"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- land degradation -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendLandDegradation, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleLandDegradation"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- landuse spatial plan -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendLanduseSpatialPlan, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleLanduseSpatialPlan"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- mining -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendMining, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleMining"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- permits -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendPermits, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("togglePermits"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//-----socio economic -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendSocioEconomic, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleSocioEconomic"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- soil -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendSoil, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleSoil"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- topography -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendTopography, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleTopography"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });		
-	}
-	
-	function fCreateLegendDiv(iLegendInfo, iLegendDiv) {
-		/*
-		try {
-			map.on('layers-add-result', function () {
-			var legenda = new Legend({
-				map: map,
-				layerInfos: iLegendInfo
-			  }, iLegendDiv);
-			  legenda.startup();
-			});
-		}
-		catch e(){
-			alert("An error has occured " + e.message);
-			console.log("Error at fCreateLegendDiv. " + e.message);
-		}*/
-	}
-	function fCreateCheckboxToggle(iLegendName, iToggleName){
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(iLegendName, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId(iToggleName), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });		
-	}
-	
 	function fCheckLegendDiv() {
-		var iAktif=false;
-		
-		//general
-		 arrayUtils.forEach(legendLayers, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}
-         });
-		 if (!iAktif) {
-			dom.byId("legendDiv").innerHTML="";			
-			};
-		 iAktif=false;
-		 
-		//legendAdministrativeDiv
-		 arrayUtils.forEach(legendAdministrative, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
-         });
-		 if (!iAktif) {dom.byId("legendAdministrativeDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendAgricultureDiv
-		 arrayUtils.forEach(legendAgriculture, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}
-         });
-		 if (!iAktif) {dom.byId("legendAgricultureDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendCarbonProjectDiv
-		 arrayUtils.forEach(legendCarbonProject, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
-         });
-		 if (!iAktif) {dom.byId("legendCarbonProjectDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//general
-		 arrayUtils.forEach(legendLayers, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}
-         });
-		 if (!iAktif) {dom.byId("legendDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendClimateDiv
-		 arrayUtils.forEach(legendClimate, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
-         });
-		 if (!iAktif) {dom.byId("legendClimateDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendEcologyDiv
-		 arrayUtils.forEach(legendEcology, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}
-         });
-		 if (!iAktif) {dom.byId("legendEcologyDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendEnergyDiv
-		 arrayUtils.forEach(legendEnergy, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
-         });
-		 if (!iAktif) {dom.byId("legendEnergyDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		 //legendForestryDiv
-		 arrayUtils.forEach(legendForestry, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}
-         });
-		 if (!iAktif) {dom.byId("legendForestryDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendHazardVunerabillityDiv
-		 arrayUtils.forEach(legendHazardVunerabillity, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
-         });
-		 if (!iAktif) {dom.byId("legendHazardVunerabillityDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendHotspotDiv
-		 arrayUtils.forEach(legendHotspot, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}
-         });
-		 if (!iAktif) {dom.byId("legendHotspotDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendHydrologyDiv
-		 arrayUtils.forEach(legendHydrology, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
-         });
-		 if (!iAktif) {dom.byId("legendHydrologyDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendInfrastructureDiv
-		 arrayUtils.forEach(legendInfrastructure, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}
-         });
-		 if (!iAktif) {dom.byId("legendInfrastructureDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendLandcoverDiv
-		 arrayUtils.forEach(legendLandcover, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
-         });
-		 if (!iAktif) {dom.byId("legendLandcoverDiv").innerHTML="";};
-		 iAktif=false;
-		
-		//legendLandscapeDiv
-		 arrayUtils.forEach(legendLandscape, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
-         });
-		 if (!iAktif) {dom.byId("legendLandscapeDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendLandDegradationDiv
-		 arrayUtils.forEach(legendLandDegradation, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}
-         });
-		 if (!iAktif) {dom.byId("legendLandDegradationDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendMiningDiv
-		 arrayUtils.forEach(legendMining, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
-         });
-		 if (!iAktif) {dom.byId("legendMiningDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendTopographyDiv
-		 arrayUtils.forEach(legendTopography, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
-         });
-		 if (!iAktif) {dom.byId("legendTopographyDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendPermitsDiv
-		 arrayUtils.forEach(legendPermits, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
-         });
-		 if (!iAktif) {dom.byId("legendPermitsDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendLanduseSpatialPlanDiv
-		 arrayUtils.forEach(legendLanduseSpatialPlan, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
-         });
-		 if (!iAktif) {dom.byId("legendLanduseSpatialPlanDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendSocioEconomicDiv
-		 arrayUtils.forEach(legendSocioEconomic, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
-         });
-		 if (!iAktif) {dom.byId("legendSocioEconomicDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendSoilDiv
-		 arrayUtils.forEach(legendSoil, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
-         });
-		 if (!iAktif) {dom.byId("legendSoilDiv").innerHTML="";};
-		 iAktif=false;
+        fHideLegendDiv(legendLayers,"legendDiv");
+        fHideLegendDiv(legendAdministrative,"legendAdministrativeDiv");
+        fHideLegendDiv(legendAgriculture,"legendAgricultureDiv");
+        fHideLegendDiv(legendCarbonProject,"legendCarbonProjectDiv");
+        fHideLegendDiv(legendClimate,"legendClimateDiv");
+        fHideLegendDiv(legendEcology,"legendEcologyDiv");
+	    fHideLegendDiv(legendEnergy,"legendEnergyDiv");
+        fHideLegendDiv(legendForestry,"legendForestryDiv");
+        fHideLegendDiv(legendHazardVunerabillity,"legendHotspotDiv");
+        fHideLegendDiv(legendHydrology,"legendHydrologyDiv");
+        fHideLegendDiv(legendInfrastructure,"legendInfrastructureDiv");
+        fHideLegendDiv(legendLandcover,"legendLandcoverDiv");
+        fHideLegendDiv(legendLandscape,"legendLandscapeDiv");
+        fHideLegendDiv(legendLandDegradation,"legendLandDegradationDiv");
+        fHideLegendDiv(legendMining,"legendMiningDiv");
+        fHideLegendDiv(legendTopography,"legendTopographyDiv");
+        fHideLegendDiv(legendPermits,"legendPermitsDiv");
+	    fHideLegendDiv(legendLanduseSpatialPlan,"legendLanduseSpatialPlanDiv");
+        fHideLegendDiv(legendSocioEconomic,"legendSocioEconomicDiv");
+        fHideLegendDiv(legendSoil,"legendSoilDiv");
 	}
 	
 	function fAdditionalInfo(iVal) {
@@ -2282,6 +1450,7 @@ require([
 		})
 		
 		fAdditionalInfo(1);
+        fCheckLegendDiv();
 	}
 		
 	function hideLayers() {
@@ -2435,34 +1604,12 @@ require([
 		fCreateSlider(84, 94, "sliderLandcover");
 		fCreateSlider(96, 97, "sliderLandscape");
 		fCreateSlider(99, 99, "sliderLandDegradation");
-		fCreateSlider(101, 101, "sliderMining");
-		fCreateSlider(103, 104, "sliderPermits");
-		fCreateSlider(106, 113, "sliderLanduseSpatialPlan");
+		fCreateSlider(103, 104, "sliderMining");
+		fCreateSlider(106, 113, "sliderPermits");
+		fCreateSlider(101, 101, "sliderLanduseSpatialPlan");
 		fCreateSlider(115, 116, "sliderSocioEconomic");
 		fCreateSlider(118, 120, "sliderSoil");
 		fCreateSlider(122, 132, "sliderTopograpy");
-	}
-	
-	function fCreateSlider(iLayerIDStart, iLayerIDEnd, iSliderDivName) {
-		try {
-			slider = new HorizontalSlider({
-			name: "slider" + iLayerIDStart,
-			value: 1,
-			minimum: 0,
-			maximum: 1,
-			intermediateChanges: true,
-			style: "250px",
-			onChange: function(value){
-					for (var i = iLayerIDStart; i <= iLayerIDEnd; i++) {
-						map.getLayer(i).setOpacity(value);
-					}			
-				}
-			}, iSliderDivName);
-		}
-		catch (err) {
-			alert ("Error found");
-			console.log ("fCreateSlider : " + err.message);
-		}		
 	}
 	
 	function fRadioProvince() {
@@ -2587,7 +1734,7 @@ require([
 			value: "landscape",
 			name: "rbAnalysis",
 		}, "radioLandscape");
-		
+				
 		var comboBox = new ComboBox({
 			id: "provinceSelect",
 			name: "province",
@@ -2657,6 +1804,7 @@ require([
 				{name:"Yogyakarta", id:"34"}*/
 			]
 		});
+		
 		var districtStoreZT = new Memory({
 			data: [
 				{name:"Muaro Jambi", id:"MJ"},
@@ -2689,13 +1837,15 @@ require([
 			name: "rbAnalysisZT",
 		}, "radioLandscapeZT");
 		
+		
 		var comboBox = new ComboBox({
 			id: "provinceSelectZT",
 			name: "province",
+			placeHolder: "Select a Province",
 			value: "-----",
 			store: provinceStoreZT,
 			searchAttr: "name"
-		}, "provinceSelectZT");
+		}, "provinceSelectZT");	
 		var comboBox = new ComboBox({
 			id: "districtSelectZT",
 			name: "district",
@@ -2817,7 +1967,8 @@ require([
 	}
 
 	function fZoomTo() {
-		
+		fCheckLegendDiv();
+
 		var iArea, iSelectArea, iSelectAnalysis;
 		
 		if (dom.byId("radioProvinceZT").checked && dijit.byId("provinceSelectZT").get("value") != "-----" ) {

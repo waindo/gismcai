@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
@@ -14,25 +14,25 @@
 <link rel="stylesheet" type="text/css" href="./js/agsjs/css/agsjs.css" />
 <link rel="stylesheet" href="./css/template.css">
 <script type="text/javascript">
-                    	// helpful for understanding dojoConfig.packages vs. dojoConfig.paths:
-                  // http://www.sitepen.com/blog/2013/06/20/dojo-faq-what-is-the-difference-packages-vs-paths-vs-aliases/
-                  var dojoConfig = { 
-                    paths: {
-                      //if you want to host on your own server, download and put in folders then use path like: 
-                            agsjs: location.pathname.replace(/\/[^/]+$/, '') + '/./js/agsjs' 
-                        }
-                  };
+    // helpful for understanding dojoConfig.packages vs. dojoConfig.paths:
+    // http://www.sitepen.com/blog/2013/06/20/dojo-faq-what-is-the-difference-packages-vs-paths-vs-aliases/
+    var dojoConfig = { 
+        paths: {
+            //if you want to host on your own server, download and put in folders then use path like: 
+            agsjs: location.pathname.replace(/\/[^/]+$/, '') + '/./js/agsjs' 
+        }
+    };
 </script>
 <script src="http://localhost/arcgis_js_api/library/3.9/"></script>
 <script src="./js/mcai.js"></script>
 
 <script>
-      function load() {
-        document.getElementById("contentMCAI").style.visibility = "visible";
-		document.getElementById("loadingDiv").style.visibility = "hidden";
-      }
-      window.onload = load;
-    </script>
+    function load() {
+    document.getElementById("contentMCAI").style.visibility = "visible";
+	document.getElementById("loadingDiv").style.visibility = "hidden";
+    }
+    window.onload = load;
+</script>
 	
 </head>
 
@@ -58,33 +58,6 @@
 	   style=" background-image: url(./images/batik-tile.jpg);">
 
     <div data-dojo-type="dijit/layout/AccordionContainer">
-		<!-- legend pane -->
-		<!--
-		<div data-dojo-type="dijit/layout/ContentPane" id="legendPane"
-			data-dojo-props="title:'Legend'">
-				<div id="legendDiv"></div>
-				<div id="legendAdministrativeDiv" style=""></div>
-				<div id="legendAgricultureDiv" style=""></div>
-				<div id="legendCarbonProjectDiv" style=""></div>
-				<div id="legendClimateDiv" style=""></div>
-				<div id="legendEcologyDiv" style=""></div>
-				<div id="legendEnergyDiv" style=""></div>
-				<div id="legendForestryDiv" style=""></div>
-				<div id="legendHazardVunerabillityDiv" style=""></div>
-				<div id="legendHotspotDiv" style=""></div>
-				<div id="legendHydrologyDiv" style=""></div>
-				<div id="legendInfrastructureDiv" style=""></div>
-				<div id="legendLandcoverDiv" style=""></div>
-				<div id="legendLandscapeDiv" style=""></div>
-				<div id="legendLandDegradationDiv" style=""></div>
-				<div id="legendMiningDiv" style=""></div>
-				<div id="legendPermitsDiv" style=""></div>
-				<div id="legendLanduseSpatialPlanDiv" style=""></div>
-				<div id="legendSocioEconomicDiv" style=""></div>
-				<div id="legendSoilDiv" style=""></div>
-				<div id="legendTopographyDiv" style=""></div>				
-		</div>
-		-->
 		<!-- filter pane -->
 		<div data-dojo-type="dijit/layout/ContentPane"
            data-dojo-props="title:'Main Navigation', selected:true">
@@ -224,7 +197,7 @@
 			<div data-dojo-type="dijit/form/Button" id="zoomprev" data-dojo-props="iconClass:'zoomprevIcon'">Prev Extent</div>
 			<div data-dojo-type="dijit/form/Button" id="zoomnext" data-dojo-props="iconClass:'zoomnextIcon'">Next Extent</div>
 			<div data-dojo-type="dijit/form/Button" id="pan" data-dojo-props="iconClass:'panIcon'">Pan</div>
-			<div data-dojo-type="dijit/form/Button" id="deactivate" data-dojo-props="iconClass:'deactivateIcon'">Deactivate</div>
+			<!--<div data-dojo-type="dijit/form/Button" id="deactivate" data-dojo-props="iconClass:'deactivateIcon'">Deactivate</div>-->
 		</div>
 
 	   <div id="HomeButton"></div>
@@ -232,7 +205,7 @@
 	   <div style="position:absolute; left:20px; top:50px; z-Index:999;">
           <div data-dojo-type="dijit/TitlePane" 
                data-dojo-props="title:'Legend', closable:false,  open:false">
-            <div data-dojo-type="dijit/layout/ContentPane" style="width:380px; height:280px; overflow:auto;">
+            <div data-dojo-type="dijit/layout/ContentPane" style="width:200px; height:150px; overflow:auto;">
             <div id="legendFlyDiv" style="visibility=hidden;">
 				<div id="legendDiv"></div>
 				<div id="legendAdministrativeDiv" style=""></div>
