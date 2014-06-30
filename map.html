@@ -161,6 +161,12 @@
 				<div id="shortDescriptionDiv" style="visibility=hidden;"></div>
 		</div>
 		
+		<!-- search layer pane -->
+		<div data-dojo-type="dijit/layout/ContentPane" id="searchLayerPane"
+			data-dojo-props="title:'Search Layer'">
+				<div id="searchLayerDiv" style="visibility=hidden;"></div>
+		</div>
+		
 		<!-- basemap pane -->
 		<div data-dojo-type="dijit/layout/ContentPane" id="basemapPane"
 			data-dojo-props="title:'Basemap'">
@@ -171,6 +177,26 @@
 		<div data-dojo-type="dijit/layout/ContentPane" id="toolsPane"
 			data-dojo-props="title:'Tools'">
 				<div id = "printButton"></div>
+				<div id="searchLayerData">
+					<div data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'top'" style="height:50px;">
+					  Layer data: <input type="text" id="findLayer" size="30" value="-----" />      
+						  <button id="search" data-dojo-type="dijit.form.Button" type="button" data-dojo-attach-point="button" >Search       
+						  </button>
+						  <button id="clearSelectionButton" data-dojo-type="dijit.form.Button" type="button" data-dojo-attach-point="button" >Clear search       
+						  </button>
+					</div>
+					<div data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'bottom'" style="height:150px;">
+					 <table data-dojo-type="dojox/grid/DataGrid" data-dojo-id="grid"  id="grid" data-dojo-props="rowsPerPage:'5', rowSelector:'20px'">
+					  <thead>
+						<tr>
+						  <th field="KABKOT">District</th>				  
+						  <th field="KECAMATAN">Sub District</th>
+						  <th field="DESA">Village</th>
+						</tr>
+					  </thead>
+					</table>
+					</div>
+				</div>
 				<div id = "measurementDiv"></div>				
 		</div>
     </div>
@@ -201,7 +227,9 @@
 		</div>
 
 	   <div id="HomeButton"></div>
-	   
+	   	<div id="help" style="position:absolute; right:20px; top:13px; z-Index:998;">
+			<a target="_blank" href="./help/about.html">About</a> &nbsp <a target="_blank" href="./help/quickguide.html" >Quick Guide</a>
+		</div>
 	   <div style="position:absolute; left:20px; top:50px; z-Index:999;">
           <div data-dojo-type="dijit/TitlePane" 
                data-dojo-props="title:'Legend', closable:false,  open:false">

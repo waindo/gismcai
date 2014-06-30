@@ -10,6 +10,8 @@ var iAlamatLokal = "localhost";
 var iMapServicesFolder = "http://" + iAlamatLokal + ":6080/arcgis/rest/services/data/";
 var iFeatureFolder = iMapServicesFolder + "indonesia3/MapServer/";
 
+var findTask, findParams;
+
 require([
 	"esri/map",
 	"esri/arcgis/utils",
@@ -27,7 +29,8 @@ require([
 	"esri/layers/ArcGISDynamicMapServiceLayer",
 	"esri/layers/ImageParameters",
 	"esri/layers/LabelLayer",
-  
+	
+	"esri/symbols/SimpleMarkerSymbol",
     "esri/symbols/SimpleLineSymbol",
     "esri/symbols/SimpleFillSymbol",
 	"esri/symbols/TextSymbol",
@@ -37,10 +40,12 @@ require([
 	
 	"esri/geometry/Extent", 
 	"esri/toolbars/navigation",
+	"esri/tasks/FindTask",
+	"esri/tasks/FindParameters",
 	
 	"esri/dijit/Print", "esri/tasks/PrintTemplate", 
 	"esri/request", "esri/config",
-	
+		
 	"dojo/dom-construct",
 	"dojo/dom",      
 	"dojo/on",
@@ -48,6 +53,9 @@ require([
 	"dojo/query",
 	"dojo/_base/array",
 	"dojo/_base/connect",
+	"dojox/grid/DataGrid",
+    "dojo/data/ItemFileReadStore",
+	
 	"dojo/_base/Color",
 	"dojo/store/Memory",
 	"dojo/json",
@@ -82,9 +90,9 @@ require([
 	function (
 		Map, utils, InfoTemplate, Legend, InfoWindowLite, HomeButton, Bookmarks, Scalebar, BasemapGallery,  
 			FeatureLayer, ArcGISTiledMapServiceLayer, ArcGISDynamicMapServiceLayer, ImageParameters,  LabelLayer, 
-			SimpleLineSymbol, SimpleFillSymbol, TextSymbol, ClassBreaksRenderer, SimpleRenderer, 
-			Extent, Navigation, Print, PrintTemplate, esriRequest, esriConfig,
-		domConstruct, dom, on, parser, query, arrayUtils, connect, Color, Memory, JSON, 
+			SimpleMarkerSymbol, SimpleLineSymbol, SimpleFillSymbol, TextSymbol, ClassBreaksRenderer, SimpleRenderer, 
+			Extent, Navigation, FindTask, FindParameters, Print, PrintTemplate, esriRequest, esriConfig,
+		domConstruct, dom, on, parser, query, arrayUtils, connect, DataGrid, ItemFileReadStore, Color, Memory, JSON, 
 		dtProvince, 
 		CheckBox, ComboBox, RadioButton, Button, HorizontalSlider, 
 			AccordionContainer, BorderContainer, ContentPane, 
@@ -92,9 +100,13 @@ require([
 		Measurement,
 		TOC
 	) {
-		parser.parse();
 		var navToolbar;
-
+		var findTask, findParams;
+		var map, center, zoom;
+        var grid, store;
+		
+		parser.parse();
+		
 		esriConfig.defaults.io.proxyUrl = "/mcai_dev/proxy";
 		loading = dojo.byId("loadingImg");
 		
@@ -126,7 +138,7 @@ require([
 		fAddCategoryGroup();
 		
 		fLoadWidgets();
-		fSetPrinter();
+		//fSetPrinter();
 		fLoadAreaList();
 		fLoadZoomTo();
 
@@ -144,8 +156,12 @@ require([
 		on(dom.byId("radioLandscapeZT"), "click", fRadioLandscapeZT);
 		
 		//on(dom.byId("processButton"), "click", fProcess);
-		on(dom.byId("zoomToButton"), "click", fZoomTo);
-		
+		on(dom.byId("zoomToButton"), "click", fZoomTo);		
+		on(dom.byId("clearSelectionButton"), "click", function () {
+			dom.byId("findLayer").value="-----";
+			doFind();
+        });
+		registry.byId("search").on("click", doFind);
 		navToolbar = new Navigation(map);
           on(navToolbar, "onExtentHistoryChange", extentHistoryChangeHandler);
 
@@ -178,11 +194,81 @@ require([
             navToolbar.deactivate();
           });
 		  */
-
+		
+		//create find task with url to map service
+		findTask = new FindTask(iFeatureFolder);
+        		
+		map.on("load", function () {
+			console.log( map.getLayer(12).visible);
+			//if (map.getLayer(12).visible) {
+				var iLayerIDActive, iLayerFieldActive
+				
+				//Create the find parameters
+				findParams = new FindParameters();
+				findParams.returnGeometry = true;
+				findParams.layerIds = [12];
+				findParams.searchFields = ["DESA"];
+				findParams.outSpatialReference = map.spatialReference;
+				//console.log("find sr: ", findParams.outSpatialReference);
+			//}			
+        });
+		
 	//------------------------
 	//-- all functions --
 	//------------------------
+	function doFind() {
+          //Set the search text to the value in the box
+          findParams.searchText = dom.byId("findLayer").value;
+          findTask.execute(findParams, showResults); 
+	}
 	
+	function showResults(results) {
+          //This function works with an array of FindResult that the task returns
+          map.graphics.clear();
+          var symbol = new SimpleFillSymbol(
+            SimpleFillSymbol.STYLE_SOLID, 
+            new SimpleLineSymbol(SimpleLineSymbol.STYLE_SOLID, new Color([98, 194, 204]), 2), 
+            new Color([98, 194, 204, 0.5])
+          );
+
+          //create array of attributes
+          var items = arrayUtils.map(results, function (result) {
+            var graphic = result.feature;
+            graphic.setSymbol(symbol);
+            map.graphics.add(graphic);
+            return result.feature.attributes;
+          });
+
+          //Create data object to be used in store
+          var data = {
+            identifier : "DESA", //This field needs to have unique values
+            label : "DESA", //Name field for display. Not pertinent to a grid but may be used elsewhere.
+            items : items
+          };
+
+          //Create data store and bind to grid.
+          store = new ItemFileReadStore({
+            data : data
+          });
+          var grid = registry.byId("grid");
+          grid.setStore(store);
+          grid.on("rowclick", onRowClickHandler);
+
+          //Zoom back to the initial map extent
+          map.centerAndZoom(center, zoom);
+	}
+	
+	//Zoom to the parcel when the user clicks a row
+	function onRowClickHandler(evt) {
+	  var clickedTaxLotId = evt.grid.getItem(evt.rowIndex).DESA;
+	  var selectedTaxLot = arrayUtils.filter(map.graphics.graphics, function (graphic) {
+		return ((graphic.attributes) && graphic.attributes.DESA === clickedTaxLotId);
+	  });
+	  if ( selectedTaxLot.length ) {
+		map.setExtent(selectedTaxLot[0].geometry.getExtent(), true);
+	  }
+	}
+		
 	//----- only for fix/reusable code/function -----
 	function extentHistoryChangeHandler () {
         registry.byId("zoomprev").disabled = navToolbar.isFirstExtent();
@@ -376,8 +462,13 @@ require([
 				"<td><font face=Arial size=2>: ${DESA}</font></td>" +
 			"</tr>" +
 			"<tr>" +
+				"<td valign=top width=74><font face=Arial size=2>SHAPE AREA</font></td>" +
+				"<td><font face=Arial size=2>: ${Shape_Area}</font></td>" +
+			"</tr>" +
+			"<tr>" +
 				"<td colspan=2><font face=Arial size=2>${DESA:getFile}</font></td>" +
 			"</tr>" +
+			
 			
 		"</table>" 
 		);
@@ -444,7 +535,7 @@ require([
 		legendAdministrative.push({ layer: lyr10, title: 'District Boundary'});		
 		lyr9 = new FeatureLayer(iFeatureFolder + "9", {id:"9"});
 		legendAdministrative.push({ layer: lyr9, title: 'Capital Sub District'});		
-		lyr8 = new FeatureLayer(iFeatureFolder + "8", {id:"8", slider: true});
+		lyr8 = new FeatureLayer(iFeatureFolder + "8", {id:"8", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendAdministrative.push({ layer: lyr8, title: 'Capital District'});
 		
 		//----- agriculture group -----

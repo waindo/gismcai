@@ -1,0 +1,9 @@
+{
+"layers": [
+		{"layerID":"8","title":"Capital District", "legendName":"legendAdministrative"},
+		{"layerID":"9","title":"Capital Sub District", "legendName":"legendAdministrative"},
+		{"layerID":"10","title":"District Boundary", "legendName":"legendAdministrative"},
+		{"layerID":"11","title":"Sub District Boundary", "legendName":"legendAdministrative"},
+		{"layerID":"12","title":"Village Boundary", "legendName":"legendAdministrative"}
+    ]
+}
