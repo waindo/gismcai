@@ -1,4 +1,5 @@
 var app = {}, map, toc, dynaLayer1, dynaLayer2, featLayer1;
+
 var legendAgriculture = [], legendCarbonProject = [], legendClimate = [], legendEcology = [], legendEnergy = [];
 var legendForestry = [], legendHazardVunerabillity = [], legendHotspot = [], legendHydrology = [];
 var legendInfrastructure = [], legendLandcover = [], legendLandDegradation = [], legendMining = [];
@@ -6,11 +7,23 @@ var legendPermits = [], legendLanduseSpatialPlan = [], legendSocioEconomic = [],
 var legendLayers = [], legendTopography = [], legendRainFalls = [], legendAdministrative = [];
 var legendLandscape = [], legendPermitAgriculture = [];
 
-var iAlamatLokal = "localhost";
-var iMapServicesFolder = "http://" + iAlamatLokal + ":6080/arcgis/rest/services/data/";
-var iFeatureFolder = iMapServicesFolder + "indonesia4/MapServer/";
+var legendAgricultureSB = [], legendCarbonProjectSB = [], legendClimateSB = [], legendEcologySB = [], legendEnergySB = [];
+var legendForestrySB = [], legendHazardVunerabillitySB = [], legendHotspotSB = [], legendHydrologySB = [];
+var legendInfrastructureSB = [], legendLandcoverSB = [], legendLandDegradationSB = [], legendMiningSB = [];
+var legendPermitsSB = [], legendLanduseSpatialPlanSB = [], legendSocioEconomicSB = [], legendSoilSB = [];
+var legendLayersSB = [], legendTopographySB = [], legendRainFallsSB = [], legendAdministrativeSB = [];
+var legendLandscapeSB = [], legendPermitAgricultureSB = [];
 
 var findTask, findParams;
+var iHidePane;
+
+var iAlamatLokal = "localhost";
+var iMapServicesFolder = "http://" + iAlamatLokal + ":6080/arcgis/rest/services/data/";
+
+var iFeatureFolder = iMapServicesFolder + "indonesia4/MapServer/";
+var iFeatureFolderSulawesiBarat = iMapServicesFolder + "indonesia6/MapServer/";
+
+
 
 require([
 	"esri/map",
@@ -45,7 +58,7 @@ require([
 	
 	"esri/dijit/Print", "esri/tasks/PrintTemplate", 
 	"esri/request", "esri/config",
-		
+	
 	"dojo/dom-construct",
 	"dojo/dom",      
 	"dojo/on",
@@ -55,6 +68,8 @@ require([
 	"dojo/_base/connect",
 	"dojox/grid/DataGrid",
     "dojo/data/ItemFileReadStore",
+	
+	"dojo/fx/Toggler", "dojo/fx",
 	
 	"dojo/_base/Color",
 	"dojo/store/Memory",
@@ -92,7 +107,9 @@ require([
 			FeatureLayer, ArcGISTiledMapServiceLayer, ArcGISDynamicMapServiceLayer, ImageParameters,  LabelLayer, 
 			SimpleMarkerSymbol, SimpleLineSymbol, SimpleFillSymbol, TextSymbol, ClassBreaksRenderer, SimpleRenderer, 
 			Extent, Navigation, FindTask, FindParameters, Print, PrintTemplate, esriRequest, esriConfig,
-		domConstruct, dom, on, parser, query, arrayUtils, connect, DataGrid, ItemFileReadStore, Color, Memory, JSON, 
+		domConstruct, dom, on, parser, query, arrayUtils, connect, DataGrid, ItemFileReadStore, 
+		Toggler, coreFx,
+		Color, Memory, JSON, 
 		dtProvince, 
 		CheckBox, ComboBox, RadioButton, Button, HorizontalSlider, 
 			AccordionContainer, BorderContainer, ContentPane, 
@@ -104,10 +121,11 @@ require([
 		var findTask, findParams;
 		var map, center, zoom;
         var grid, store;
+		iHidePane = true;
 		
 		parser.parse();
 		
-		esriConfig.defaults.io.proxyUrl = "/mcai_dev/proxy";
+		//esriConfig.defaults.io.proxyUrl = "/mcai_dev/proxy";
 		loading = dojo.byId("loadingImg");
 		
 		map = new Map("map", {
@@ -127,21 +145,58 @@ require([
 		
 		//dojo.connect(map, "onUpdateStart", fShowLoading);
         //dojo.connect(map, "onUpdateEnd", fHideLoading);
-        dojo.connect(map, "onUpdateEnd", fCheckLegendDiv);
+		
+        dojo.connect(map, "onUpdateEnd", fCheckLegendDivAll);
 		
   
-		fLoadAllLayers();        
+		//fLoadTOC();
+	
+		//load jambi
+		fLoadAllLayers();
 		fHideAllFeatureLayers();
-		fSetLegend();		
+		fSetLegend();
 		fKosongDiv();
 		fAddCategoryGroup();
+
+		//load sulawesi barat
+		fLoadAllLayersSB();
+		fHideAllFeatureLayersSB();
+		fSetLegendSB();
+		fKosongDivSB();
+		fAddCategoryGroupSB();		
 		
 		fLoadWidgets();
-		//fSetPrinter();
+		fSetPrinter();
 		fLoadAreaList();
 		fLoadZoomTo();
-
-		//event when user content pane
+		
+		togglerJambiArea.show();
+		togglerSulawesiBaratArea.hide();
+		
+		fUserEvent()
+		
+		//create find task with url to map service
+		findTask = new FindTask(iFeatureFolder);
+        		
+		map.on("load", function () {
+			//console.log( map.getLayer(12).visible);
+			//if (map.getLayer(12).visible) {
+				var iLayerIDActive, iLayerFieldActive
+				
+				//Create the find parameters
+				findParams = new FindParameters();
+				findParams.returnGeometry = true;
+				findParams.layerIds = [11];
+				findParams.searchFields = ["DESA"];
+				findParams.outSpatialReference = map.spatialReference;
+				//console.log("find sr: ", findParams.outSpatialReference);
+			//}			
+        });
+		
+	//------------------------
+	//-- all functions --
+	//------------------------
+	function fUserEvent() {
 		on(dom.byId("HomeButton"), "click", fHomeButton);
 		
 		/*
@@ -149,6 +204,8 @@ require([
 		on(dom.byId("radioDistrict"), "click", fRadioDistrict);
 		on(dom.byId("radioLandscape"), "click", fRadioLandscape);
 		*/
+		on(dom.byId("provinceSelectLayer"), "click", fSelectProvinceLayer);
+		on(dom.byId("selectLayerButton"), "click", fSelectProvinceLayer);		
 		
 		on(dom.byId("radioProvinceZT"), "click", fRadioProvinceZT);
 		on(dom.byId("radioDistrictZT"), "click", fRadioDistrictZT);
@@ -156,6 +213,8 @@ require([
 		
 		//on(dom.byId("processButton"), "click", fProcess);
 		on(dom.byId("zoomToButton"), "click", fZoomTo);		
+		on(dom.byId("closePane"), "click", fHidePane);		
+		
 		on(dom.byId("clearSelectionButton"), "click", function () {
 			dom.byId("findLayer").value="-----";
 			doFind();
@@ -193,34 +252,36 @@ require([
             navToolbar.deactivate();
           });
 		  */
+	}
+	function fHidePanel() {
+		if (iHidePane) {
+			toggler.hide();
+			iHidePane=false;
+		}
+		else {
+			toggler.show();
+			iHidePane=true;
+		}
+		console.log(iHidePane);
+	}	
+	function fHidePane() {
+		var leftPanel = registry.byId('rightPane');
 		
-		//create find task with url to map service
-		findTask = new FindTask(iFeatureFolder);
-        		
-		map.on("load", function () {
-			//console.log( map.getLayer(12).visible);
-			//if (map.getLayer(12).visible) {
-				var iLayerIDActive, iLayerFieldActive
-				
-				//Create the find parameters
-				findParams = new FindParameters();
-				findParams.returnGeometry = true;
-				findParams.layerIds = [11];
-				findParams.searchFields = ["DESA"];
-				findParams.outSpatialReference = map.spatialReference;
-				//console.log("find sr: ", findParams.outSpatialReference);
-			//}			
-        });
-		
-	//------------------------
-	//-- all functions --
-	//------------------------
+		if(leftPanel){
+			if (iHidePane) {
+				registry.byId('contentMCAI'). removeChild(leftPanel);
+				iHidePane = false;
+			} else {
+				registry.byId('contentMCAI').addChild(leftPanel);
+				iHidePane = true;
+			}			
+		}
+	}	
 	function doFind() {
           //Set the search text to the value in the box
           findParams.searchText = dom.byId("findLayer").value;
           findTask.execute(findParams, showResults); 
-	}
-	
+	}	
 	function showResults(results) {
           //This function works with an array of FindResult that the task returns
           map.graphics.clear();
@@ -255,8 +316,7 @@ require([
 
           //Zoom back to the initial map extent
           map.centerAndZoom(center, zoom);
-	}
-	
+	}	
 	//Zoom to the parcel when the user clicks a row
 	function onRowClickHandler(evt) {
 	  var clickedTaxLotId = evt.grid.getItem(evt.rowIndex).DESA;
@@ -266,8 +326,7 @@ require([
 	  if ( selectedTaxLot.length ) {
 		map.setExtent(selectedTaxLot[0].geometry.getExtent(), true);
 	  }
-	}
-		
+	}		
 	//----- only for fix/reusable code/function -----
 	function extentHistoryChangeHandler () {
         registry.byId("zoomprev").disabled = navToolbar.isFirstExtent();
@@ -275,8 +334,9 @@ require([
     }   
 	function fSetPrinter() {
 			var printTitle = "MCA - Indonesia"
-			var printUrl = "http://sampleserver6.arcgisonline.com/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task";
+			var printUrl = "http://sampleserver6.arcgisonline.com/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task";							   
 			esriConfig.defaults.io.proxyUrl = "/proxy";
+			
 			
 			var layoutTemplate, templateNames, mapOnlyIndex, templates;
           
@@ -311,9 +371,9 @@ require([
             return t;
           });
 
-			var printer = new Print({
+			printer = new Print({
 				map: map,
-				templates: templates,
+				//templates: templates,
 				url: printUrl
 			}, dom.byId("printButton"));
 			printer.startup();
@@ -346,35 +406,7 @@ require([
 				}			
 			}
 		}, iSliderDivName);
-	}
-	function fCreateLabelLayers(iLabelField, iIdField, iLayerURL ) {
-	    var labelField = iLabelField;
-
-	    // create a renderer for the capital layer to override default symbology
-	    var capitalColor = new esri.Color("#666");
-	    var capitalLine = new SimpleLineSymbol("solid", capitalColor, 1.5);
-	    var capitalSymbol = new SimpleFillSymbol("solid", capitalLine, null);
-	    var capitalRenderer = new SimpleRenderer(capitalSymbol);
-	    // create a feature layer to show country boundaries
-	    var capitalUrl = iLayerURL;
-	    capitalLayer = new FeatureLayer(capitalUrl, {
-		    id: iIdField,
-		    outFields: [labelField] 
-	    });
-	    capitalLayer.setRenderer(capitalRenderer);
-	    map.addLayer(capitalLayer);
-		    // create a text symbol to define the style of labels
-	    var capitalLabel = new TextSymbol().setColor(capitalColor);
-	    capitalLabel.font.setSize("10pt");
-	    capitalLabel.font.setFamily("arial");
-	    capitalLabelRenderer = new SimpleRenderer(capitalLabel);
-	    labelLayer = new LabelLayer({ id: "labels" });
-	    // tell the label layer to label the countries feature layer 
-	    // using the field named "admin"
-	    labelLayer.addFeatureLayer(capitalLayer, capitalLabelRenderer, "${" + labelField + "}");
-	    // add the label layer to the map
-	    map.addLayer(labelLayer);
-	}
+	}	
 	function fCreateLegend(iLegendName, iLegendDiv) {
         map.on('layers-add-result', function () {
 		var legenda = new Legend({
@@ -414,32 +446,373 @@ require([
     function fHideLegendDiv(iLegendName, iLegendDiv) {
         var iAktif=false;
 		//console.log(layer.layer.id);
-        arrayUtils.forEach(iLegendName, function (layer) {
-		if (map.getLayer(layer.layer.id).visible) {iAktif=true}});
-		if (!iAktif) {dom.byId(iLegendDiv).innerHTML="";};
+		try {
+			arrayUtils.forEach(iLegendName, function (layer) {
+			if (map.getLayer(layer.layer.id).visible) {iAktif=true}});
+			if (!iAktif) {dom.byId(iLegendDiv).innerHTML="";};
+		} catch (err) {
+			console.log(iLegendDiv);
+			console.log(err.message);
+		}
     }
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
+	function fCheckLegendDivAll() {
+		fCheckLegendDiv();
+		fCheckLegendDivSB();
+	}
 	
 	
 	
 	//----- change dynamic code/function here -----	
+	function fLoadTOC() {
+		JambiLayers = new ArcGISDynamicMapServiceLayer(iFeatureFolder, {
+		});
+		
+		//add TOC new layer list
+		map.on('layers-add-result', function(evt){
+		// overwrite the default visibility of service.
+        // TOC will honor the overwritten value.        
+		//try {
+		toc = new TOC({
+			map: map,
+			layerInfos: [			
+				{
+					layer: JambiLayers,
+					title: "Jambi", 
+					//collapsed: false, // whether this root layer should be collapsed initially, default false.
+					slider: true // whether to display a transparency slider.
+				}
+			]}, 'TOCDiv');
+			toc.startup();
+			toc.on('load', function(){
+                 if (console) 
+                    console.log('TOC loaded');
+           });
+			toc.on('toc-node-checked', function(evt){
+				if (console) {
+						console.log("TOCNodeChecked, rootLayer:"
+						+(evt.rootLayer?evt.rootLayer.id:'NULL')
+						+", serviceLayer:"+(evt.serviceLayer?evt.serviceLayer.id:'NULL')
+						+ " Checked:"+evt.checked
+						+ " Name:"+evt.serviceLayer.name	
+						);
+						//+ " Checked: false");
+				}
+			});
+		//} catch (e) {  alert(e); }		 
+		});
+	}
+	
+	//----- sulawei barat function -----
+	function fLoadAllLayersSB() {
+		
+		var imageParameters = new ImageParameters();
+        imageParameters.format = "PNG32"; //set the image type to PNG24, note default is PNG8.
+		
+		var infoTemplate = new InfoTemplate();
+        infoTemplate.setTitle("Information");
+        //infoTemplate.setContent("
+		
+		var infoTemplateDetail = new InfoTemplate();
+          infoTemplateDetail.setTitle("Information");
+		  infoTemplateDetail.setContent(
+		"<table border=0 width=100%>" +
+			"<tr>" + 
+				"<td valign=top width=74><font face=Arial size=2>DISTRICT</font></td>" +
+				" <td><font face=Arial size=2>: ${KABKOT}</font></td>" +
+			"</tr>" +
+			"<tr>" +
+				"<td valign=top width=74><font face=Arial size=2>SUB DISTRICT</font></td>" +
+				"<td><font face=Arial size=2>: ${KECAMATAN}</font></td>" +
+			"</tr>" +
+			"<tr>" +
+				"<td valign=top width=74><font face=Arial size=2>VILLAGE</font></td>" +
+				"<td><font face=Arial size=2>: ${DESA}</font></td>" +
+			"</tr>" +
+			"<tr>" +
+				"<td valign=top width=74><font face=Arial size=2>SHAPE AREA</font></td>" +
+				"<td><font face=Arial size=2>: ${Shape_Area}</font></td>" +
+			"</tr>" +
+			"<tr>" +
+				"<td colspan=2><font face=Arial size=2>${DESA:getFile}</font></td>" +
+			"</tr>" +
+			
+			
+		"</table>" 
+		);
+		getFile = function(value, key, data) {
+			var result = ""
+			
+			switch(key) {
+				case "DESA": 
+					if (data.DESA == "RANTAU SULI") {
+						result = "<a href=http://" + iAlamatLokal + "/mcai_dev/detail/Intervention.htm target=_blank " ;
+						result = result + "onclick = window.open('','More Detail',";
+						result = result + "'toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes,width=500px,height=300px');return false";
+						result = result + "><i>More Detail</i></a>";
+					}					
+					break;
+			}
+			console.log(result);
+			return result
+
+		}
+		
+		
+		SBmcaiH = new FeatureLayer(iFeatureFolderSulawesiBarat + "1", {id:'501'});
+		legendLayersSB.push({ layer: SBmcaiH, title: 'Community-based Health and Nutrition to Reduce Stunting Project'});
+		SBmcaiPM = new FeatureLayer(iFeatureFolderSulawesiBarat + "2", {id:'502'});
+		legendLayersSB.push({ layer: SBmcaiPM, title: 'Procurement Modernization Project'});
+		SBmcaiGP = new FeatureLayer(iFeatureFolderSulawesiBarat + "3", {id:'503'});
+		legendLayersSB.push({ layer: SBmcaiGP, title: 'Green Prosperity Project'});
+		
+		SBindonesiaLayer = new FeatureLayer(iFeatureFolderSulawesiBarat + "4", {id:"504"});
+		SBindonesiaBackgroundLayer = new ArcGISTiledMapServiceLayer("http://services.arcgisonline.com/ArcGIS/rest/services/World_Shaded_Relief/MapServer", {id:'505'}); 
+		
+		//add for category analysis layers
+		//----- administrative group -----
+		SBlyr11 = new FeatureLayer(iFeatureFolderSulawesiBarat + "11", {id:"511",mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplateDetail,outFields: ["*"]});
+		legendAdministrativeSB.push({ layer: SBlyr11, title: 'Village Boundary'});		
+		SBlyr10 = new FeatureLayer(iFeatureFolderSulawesiBarat + "10", {id:"510", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters,  infoTemplate: infoTemplate, outFields: ["*"] });
+		legendAdministrativeSB.push({ layer: SBlyr10, title: 'Sub District Boundary'});
+		SBlyr9 = new FeatureLayer(iFeatureFolderSulawesiBarat + "9", {id:"509", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters,  infoTemplate: infoTemplate, outFields: ["*"] });
+		legendAdministrativeSB.push({ layer: SBlyr9, title: 'District Boundary'});		
+		SBlyr8 = new FeatureLayer(iFeatureFolderSulawesiBarat + "8", {id:"508"});
+		legendAdministrativeSB.push({ layer: SBlyr8, title: 'Capital Sub District'});		
+		SBlyr7 = new FeatureLayer(iFeatureFolderSulawesiBarat + "7", {id:"507", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate, outFields: ["*"] });
+		legendAdministrativeSB.push({ layer: SBlyr7, title: 'Capital District'});
+				
+		//----- climate -----
+		SBlyr15 = new FeatureLayer(iFeatureFolderSulawesiBarat + "15", {id:"515", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendClimateSB.push({ layer: SBlyr15, title: 'Rain Falls'});
+		
+		//----- energy -----
+		SBlyr20 = new FeatureLayer(iFeatureFolderSulawesiBarat + "20", {id:"520", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendEnergySB.push({ layer: SBlyr20, title: 'Transmission Line'});
+		SBlyr19 = new FeatureLayer(iFeatureFolderSulawesiBarat + "19", {id:"519", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendEnergySB.push({ layer: SBlyr19, title: 'RE Photovoltaic'});
+		SBlyr18 = new FeatureLayer(iFeatureFolderSulawesiBarat + "18", {id:"518", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendEnergySB.push({ layer: SBlyr18, title: 'RE Microhydro'});
+		SBlyr17 = new FeatureLayer(iFeatureFolderSulawesiBarat + "17", {id:"517", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendEnergySB.push({ layer: SBlyr17, title: 'Power Plants'});
+		
+		
+		//----- forestry -----
+		SBlyr23 = new FeatureLayer(iFeatureFolderSulawesiBarat + "23", {id:"523", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendForestrySB.push({ layer: SBlyr23, title: 'Existing Forest Cover'});
+		SBlyr22 = new FeatureLayer(iFeatureFolderSulawesiBarat + "22", {id:"522", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendForestrySB.push({ layer: SBlyr22, title: 'Forest Status'});
+		
+		//----- hydrology -----
+		SBlyr33 = new FeatureLayer(iFeatureFolderSulawesiBarat + "33", {id:"533", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendHydrologySB.push({ layer: SBlyr33, title: 'Watershed Boundary'});
+		SBlyr32 = new FeatureLayer(iFeatureFolderSulawesiBarat + "32", {id:"532", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendHydrologySB.push({ layer: SBlyr32, title: 'Mamuju'});
+		SBlyr31 = new FeatureLayer(iFeatureFolderSulawesiBarat + "31", {id:"531", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendHydrologySB.push({ layer: SBlyr31, title: 'Mamasa'});
+		SBlyr30 = new FeatureLayer(iFeatureFolderSulawesiBarat + "30", {id:"530", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendHydrologySB.push({ layer: SBlyr30, title: 'Main River'});
+		
+		//----- Infrastructure -----
+		SBlyr37 = new FeatureLayer(iFeatureFolderSulawesiBarat + "37", {id:"537", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendInfrastructureSB.push({ layer: SBlyr37, title: 'Other Road'});
+		SBlyr36 = new FeatureLayer(iFeatureFolderSulawesiBarat + "36", {id:"536", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendInfrastructureSB.push({ layer: SBlyr36, title: 'Main Road'});
+		SBlyr35 = new FeatureLayer(iFeatureFolderSulawesiBarat + "35", {id:"535", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		//legendInfrastructureSB.push({ layer: SBlyr35, title: 'Transportation'});
+		
+		//----- Landcover -----
+		SBlyr43 = new FeatureLayer(iFeatureFolderSulawesiBarat + "43", {id:"543", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendLandcoverSB.push({ layer: SBlyr43, title: 'Polewali Mandar'});
+		SBlyr42 = new FeatureLayer(iFeatureFolderSulawesiBarat + "42", {id:"542", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendLandcoverSB.push({ layer: SBlyr42, title: 'Mamuju Utara'});
+		SBlyr41 = new FeatureLayer(iFeatureFolderSulawesiBarat + "41", {id:"541", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendLandcoverSB.push({ layer: SBlyr41, title: 'Mamuju'});
+		SBlyr40 = new FeatureLayer(iFeatureFolderSulawesiBarat + "40", {id:"540", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendLandcoverSB.push({ layer: SBlyr40, title: 'Mamasa'});
+		SBlyr39 = new FeatureLayer(iFeatureFolderSulawesiBarat + "39", {id:"539", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendLandcoverSB.push({ layer: SBlyr39, title: 'Majene'});
+		
+		//----- landscape -----
+		SBlyr47 = new FeatureLayer(iFeatureFolderSulawesiBarat + "47", {id:"547", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,outFields: ["*"]});
+		legendLandscapeSB.push({ layer: SBlyr47, title: 'Mambi Bambang'});
+		SBlyr46 = new FeatureLayer(iFeatureFolderSulawesiBarat + "46", {id:"546", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,outFields: ["*"]});
+		legendLandscapeSB.push({ layer: SBlyr46, title: 'Sumarorong Pana'});
+		SBlyr45 = new FeatureLayer(iFeatureFolderSulawesiBarat + "45", {id:"545", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,outFields: ["*"]});
+		legendLandscapeSB.push({ layer: SBlyr45, title: 'Bonehau Kalumpang'});
+			
+		//----- soil -----
+		SBlyr62 = new FeatureLayer(iFeatureFolderSulawesiBarat + "62", {id:"562", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendSoilSB.push({ layer: SBlyr62, title: 'Soil'});
+		SBlyr61 = new FeatureLayer(iFeatureFolderSulawesiBarat + "61", {id:"561", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendSoilSB.push({ layer: SBlyr61, title: 'Fault'});
+		
+		//----- topography -----
+		SBlyr69 = new FeatureLayer(iFeatureFolderSulawesiBarat + "69", {id:"569", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendTopographySB.push({ layer: SBlyr69, title: 'Polewali Mandar'});
+		SBlyr68 = new FeatureLayer(iFeatureFolderSulawesiBarat + "68", {id:"568", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendTopographySB.push({ layer: SBlyr68, title: 'Mamuju Utara'});
+		SBlyr67 = new FeatureLayer(iFeatureFolderSulawesiBarat + "67", {id:"567", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		//legendTopographySB.push({ layer: SBlyr67, title: 'Kerinci'});
+		SBlyr66 = new FeatureLayer(iFeatureFolderSulawesiBarat + "66", {id:"566", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendTopographySB.push({ layer: SBlyr66, title: 'Mamuju'});
+		SBlyr65 = new FeatureLayer(iFeatureFolderSulawesiBarat + "65", {id:"565", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendTopographySB.push({ layer: SBlyr65, title: 'Mamasa'});
+		SBlyr64 = new FeatureLayer(iFeatureFolderSulawesiBarat + "64", {id:"564", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendTopographySB.push({ layer: SBlyr64, title: 'Majene'});
+		
+		fCreateLabelLayersSB("NAMA_KOTA", "CAPITAL", iFeatureFolderSulawesiBarat + "7");
+		
+        
+		map.addLayers([
+			//----- polygon layers group -----
+			SBindonesiaBackgroundLayer, 
+			SBindonesiaLayer, SBmcaiGP, SBmcaiH, SBmcaiPM,
+			
+			SBlyr7, SBlyr8, SBlyr9, SBlyr10, SBlyr11, 
+			
+			SBlyr15, 
+			
+			SBlyr17, SBlyr18, SBlyr19, SBlyr20,
+			
+			SBlyr22, SBlyr23, 
+			
+			//SBlyr25, SBlyr26, SBlyr27, SBlyr28,  
+			
+			SBlyr30, SBlyr31, SBlyr32, SBlyr33,  
+			
+			SBlyr35, SBlyr36, SBlyr37, 
+			
+			SBlyr39, SBlyr40, SBlyr41, SBlyr42, SBlyr43, 
+			
+			SBlyr45, SBlyr46, SBlyr47, 
+			
+			SBlyr61, SBlyr62, 
+			
+			SBlyr64, SBlyr65, SBlyr66, SBlyr67,  SBlyr68, SBlyr69
+		]);
+		
+		
+		console.log("load sulewesi barat service layer success");
+	}
+	function fCreateLabelLayersSB(iLabelField, iIdField, iLayerURL ) {
+	    var labelField = iLabelField;
+
+	    // create a renderer for the capital layer to override default symbology
+	    var capitalColor = new esri.Color("#666");
+	    var capitalLine = new SimpleLineSymbol("solid", capitalColor, 1.5);
+	    var capitalSymbol = new SimpleFillSymbol("solid", capitalLine, null);
+	    var capitalRenderer = new SimpleRenderer(capitalSymbol);
+	    // create a feature layer to show country boundaries
+	    var capitalUrl = iLayerURL;
+	    SBcapitalLayer = new FeatureLayer(capitalUrl, {
+		    id: iIdField,
+		    outFields: [labelField] 
+	    });
+	    SBcapitalLayer.setRenderer(capitalRenderer);
+	    map.addLayer(SBcapitalLayer);
+		    // create a text symbol to define the style of labels
+	    var SBcapitalLabel = new TextSymbol().setColor(capitalColor);
+	    SBcapitalLabel.font.setSize("10pt");
+	    SBcapitalLabel.font.setFamily("arial");
+	    SBcapitalLabelRenderer = new SimpleRenderer(SBcapitalLabel);
+	    SBlabelLayer = new LabelLayer({ id: "labels" });
+	    // tell the label layer to label the countries feature layer 
+	    // using the field named "admin"
+	    SBlabelLayer.addFeatureLayer(SBcapitalLayer, SBcapitalLabelRenderer, "${" + labelField + "}");
+	    // add the label layer to the map
+	    map.addLayer(SBlabelLayer);
+	}
+	function fHideAllFeatureLayersSB() {
+		SBmcaiGP.hide(); SBmcaiH.hide(); SBmcaiPM.hide();
+			
+		SBlyr7.hide();  SBlyr8.hide();  SBlyr9.hide();  SBlyr10.hide();  SBlyr11.hide();  
+		
+		SBlyr15.hide();  
+		
+		SBlyr17.hide();  SBlyr18.hide();  SBlyr19.hide();  SBlyr20.hide(); 
+		
+		SBlyr22.hide();  SBlyr23.hide();  
+		
+		//SBlyr25.hide();  SBlyr26.hide();  SBlyr27.hide();  SBlyr28.hide();   
+		
+		SBlyr30.hide();  SBlyr31.hide();  SBlyr32.hide();  SBlyr33.hide();   
+		
+		SBlyr35.hide();  SBlyr36.hide();  SBlyr37.hide();  
+		
+		SBlyr39.hide();  SBlyr40.hide();  SBlyr41.hide();  SBlyr42.hide();  SBlyr43.hide();  
+		
+		SBlyr45.hide();  SBlyr46.hide();  SBlyr47.hide();  
+		
+		SBlyr61.hide();  SBlyr62.hide();  
+		
+		SBlyr64.hide();  SBlyr65.hide();  SBlyr66.hide();  SBlyr67.hide();   SBlyr68.hide();  SBlyr69.hide();
+		
+		SBcapitalLayer.hide(); SBlabelLayer.hide();
+	}
+	function fSetLegendSB() {
+		fCreateLegend(legendLayersSB, "legendDivSB");
+		fCreateLegend(legendAdministrativeSB, "legendAdministrativeDivSB");
+		fCreateLegend(legendClimateSB, "legendClimateDivSB");
+        fCreateLegend(legendEnergySB, "legendEnergyDivSB");
+        fCreateLegend(legendForestrySB, "legendForestryDivSB");
+        fCreateLegend(legendHydrologySB, "legendHydrologyDivSB");
+        fCreateLegend(legendInfrastructureSB, "legendInfrastructureDivSB");
+        fCreateLegend(legendLandcoverSB, "legendLandcoverDivSB");
+        fCreateLegend(legendLandscapeSB, "legendLandscapeDivSB");
+        fCreateLegend(legendSoilSB, "legendSoilDivSB");
+		fCreateLegend(legendTopographySB, "legendTopographyDivSB");
+	}
+	function fAddCategoryGroupSB() {
+		fCreateCategoryGroup(legendLayersSB, "toggleGeneralSB");	
+        fCreateCategoryGroup(legendAdministrativeSB, "toggleAdministrativeSB");
+        fCreateCategoryGroup(legendClimateSB, "toggleClimateSB");
+		fCreateCategoryGroup(legendEnergySB, "toggleEnergySB");
+        fCreateCategoryGroup(legendForestrySB, "toggleForestrySB");
+        fCreateCategoryGroup(legendHydrologySB, "toggleHydrologySB");
+        fCreateCategoryGroup(legendInfrastructureSB, "toggleInfrastructureSB");
+        fCreateCategoryGroup(legendLandcoverSB, "toggleLandcoverSB");
+        fCreateCategoryGroup(legendLandscapeSB, "toggleLandscapeSB");
+        fCreateCategoryGroup(legendSoilSB, "toggleSoilSB");
+        fCreateCategoryGroup(legendTopographySB, "toggleTopographySB");
+	}
+	function fCheckLegendDivSB() {
+		fHideLegendDiv(legendLayersSB,"legendDivSB");
+        fHideLegendDiv(legendAdministrativeSB,"legendAdministrativeDivSB");
+        fHideLegendDiv(legendClimateSB,"legendClimateDivSB");
+        fHideLegendDiv(legendEnergySB,"legendEnergyDivSB");
+        fHideLegendDiv(legendForestrySB,"legendForestryDivSB");
+        fHideLegendDiv(legendHydrologySB,"legendHydrologyDivSB");
+        fHideLegendDiv(legendInfrastructureSB,"legendInfrastructureDivSB");
+        fHideLegendDiv(legendLandcoverSB,"legendLandcoverDivSB");
+        fHideLegendDiv(legendLandscapeSB,"legendLandscapeDivSB");
+        fHideLegendDiv(legendSoilSB,"legendSoilDivSB");
+		fHideLegendDiv(legendTopographySB,"legendTopographyDivSB");
+	}
+	function fKosongDivSB() {
+		dom.byId("legendDivSB").innerHTML="";
+		dom.byId("legendAdministrativeDivSB").innerHTML="";
+		dom.byId("legendCarbonProjectDivSB").innerHTML="";
+		dom.byId("legendClimateDivSB").innerHTML="";
+		dom.byId("legendEnergyDivSB").innerHTML="";
+		dom.byId("legendForestryDivSB").innerHTML="";
+		dom.byId("legendHydrologyDivSB").innerHTML="";
+		dom.byId("legendInfrastructureDivSB").innerHTML="";
+		dom.byId("legendLandcoverDivSB").innerHTML="";
+		dom.byId("legendLandscapeDivSB").innerHTML="";
+		dom.byId("legendLandDegradationDivSB").innerHTML="";
+		dom.byId("legendPermitAgricultureDivSB").innerHTML="";
+		dom.byId("legendMiningDivSB").innerHTML="";
+		dom.byId("legendPermitsDivSB").innerHTML="";
+		dom.byId("legendLanduseSpatialPlanDivSB").innerHTML="";
+		dom.byId("legendSocioEconomicDivSB").innerHTML="";
+		dom.byId("legendSoilDivSB").innerHTML="";
+		dom.byId("legendTopographyDivSB").innerHTML="";
+	}
+	function fAdditionalInfoSB() {
+	}
+	
+	
+	//----- jambi layer function -----
 	function fLoadAllLayers() {
 		var imageParameters = new ImageParameters();
         imageParameters.format = "PNG32"; //set the image type to PNG24, note default is PNG8.
@@ -780,8 +1153,9 @@ require([
 		
 		fCreateLabelLayers("City_name", "capital", iFeatureFolder + "7");
 		
+        
 		map.addLayers([
-			//----- polygon layers group -----
+			//----- jambi layer -----
 			indonesiaBackgroundLayer, 
 			indonesiaLayer, mcaiGP, mcaiH, mcaiPM,
 			
@@ -831,31 +1205,100 @@ require([
 			lyr118, lyr119, lyr120, 
 			
 			lyr122, lyr123, lyr124, lyr125, lyr126, lyr127, lyr128, lyr129, lyr130, lyr131, lyr132
-			
-			
-			/*
-			lyr9, lyr10, lyr11, lyr17, lyr18, 
-			lyr20, lyr22, lyr23, lyr24, lyr25, lyr26, lyr27, lyr28, lyr29,
-			lyr36, lyr37, lyr38, lyr39, lyr40, lyr41, lyr42, lyr43, 
-			lyr82, lyr83, lyr84, lyr85, lyr86, lyr87, lyr88, lyr89, 
-			lyr90, lyr91, lyr92, lyr97, lyr99, lyr101, lyr103, lyr104, 
-			lyr106, lyr107, lyr108, lyr109, lyr110, lyr111, lyr112, 
-			lyr113, lyr116, lyr119, lyr120,  
-			//----- line layers group -----
-			lyr34, lyr55, lyr56, lyr57, lyr58, lyr59, lyr60, lyr61, 
-			lyr62, lyr63, lyr64, lyr65, lyr66, lyr67, lyr69, lyr70, 
-			lyr71, lyr72, lyr73, lyr74, lyr75, lyr76, lyr77, lyr78, 
-			lyr79, lyr80, lyr94, lyr95, lyr118, lyr122, lyr123, lyr124, 
-			lyr125, lyr126, lyr127, lyr128, lyr129, lyr130, lyr131, 
-			lyr132, 
-			//----- point layers group -----
-			lyr7, lyr8, lyr12, lyr14, lyr15, lyr16, lyr31, lyr32, 
-			lyr33, lyr50, lyr51, lyr52, lyr53, lyr115
-			*/
 		]);
 		
 		
 		console.log("load service layer success");
+	}
+    function fCreateLabelLayers(iLabelField, iIdField, iLayerURL ) {
+	    var labelField = iLabelField;
+
+	    // create a renderer for the capital layer to override default symbology
+	    var capitalColor = new esri.Color("#666");
+	    var capitalLine = new SimpleLineSymbol("solid", capitalColor, 1.5);
+	    var capitalSymbol = new SimpleFillSymbol("solid", capitalLine, null);
+	    var capitalRenderer = new SimpleRenderer(capitalSymbol);
+	    // create a feature layer to show country boundaries
+	    var capitalUrl = iLayerURL;
+	    capitalLayer = new FeatureLayer(capitalUrl, {
+		    id: iIdField,
+		    outFields: [labelField] 
+	    });
+	    capitalLayer.setRenderer(capitalRenderer);
+	    map.addLayer(capitalLayer);
+		    // create a text symbol to define the style of labels
+	    var capitalLabel = new TextSymbol().setColor(capitalColor);
+	    capitalLabel.font.setSize("10pt");
+	    capitalLabel.font.setFamily("arial");
+	    capitalLabelRenderer = new SimpleRenderer(capitalLabel);
+	    labelLayer = new LabelLayer({ id: "labels" });
+	    // tell the label layer to label the countries feature layer 
+	    // using the field named "admin"
+	    labelLayer.addFeatureLayer(capitalLayer, capitalLabelRenderer, "${" + labelField + "}");
+	    // add the label layer to the map
+	    map.addLayer(labelLayer);
+	}
+	function fHideAllFeatureLayers() {
+            //----- jambi layer -----
+			//indonesiaLayer.hide(); 
+			mcaiGP.hide(); mcaiH.hide(); mcaiPM.hide();
+			lyr7.hide(); lyr8.hide(); lyr9.hide(); lyr10.hide(); lyr11.hide(); lyr12.hide();
+			lyr14.hide(); //lyr15.hide(); 
+			lyr16.hide(); lyr17.hide(); lyr18.hide();
+			lyr20.hide();
+			//lyr22.hide(); lyr23.hide(); lyr24.hide(); lyr25.hide(); lyr26.hide(); lyr27.hide(); lyr28.hide(); lyr29.hide(); 
+			lyr31.hide(); lyr32.hide(); lyr33.hide(); lyr34.hide(); 
+			lyr36.hide(); //lyr37.hide(); lyr38.hide(); 
+			lyr39.hide(); lyr40.hide(); lyr41.hide(); lyr42.hide(); lyr43.hide();
+			//lyr45.hide(); lyr46.hide(); lyr47.hide(); lyr48.hide();
+			//lyr50.hide(); lyr51.hide(); lyr52.hide(); lyr53.hide();
+			lyr55.hide(); lyr56.hide(); lyr57.hide(); lyr58.hide(); lyr59.hide(); lyr60.hide(); lyr61.hide(); lyr62.hide(); lyr63.hide(); lyr64.hide(); lyr65.hide(); lyr66.hide(); lyr67.hide(); 
+			lyr69.hide(); 
+			//lyr70.hide(); lyr71.hide(); lyr72.hide(); lyr73.hide(); 
+			lyr74.hide(); lyr75.hide(); 
+			//lyr76.hide(); lyr77.hide(); lyr78.hide(); lyr79.hide(); lyr80.hide();
+			lyr82.hide(); lyr83.hide(); lyr84.hide(); lyr85.hide(); lyr86.hide(); lyr87.hide(); lyr88.hide(); lyr89.hide(); lyr90.hide(); lyr91.hide(); lyr92.hide(); 
+			lyr94.hide(); lyr95.hide(); 
+			lyr97.hide(); 
+			lyr99.hide();
+			lyr101.hide();
+			lyr103.hide(); lyr104.hide();
+			//lyr106.hide(); lyr107.hide(); 
+			lyr108.hide(); //lyr109.hide(); 
+			lyr110.hide(); lyr111.hide(); lyr112.hide(); lyr113.hide();
+			lyr115.hide(); lyr116.hide(); 
+			lyr118.hide(); lyr119.hide(); lyr120.hide(); 
+			lyr122.hide(); lyr123.hide(); lyr124.hide(); lyr125.hide(); lyr126.hide(); lyr127.hide(); lyr128.hide(); lyr129.hide(); lyr130.hide(); lyr131.hide(); lyr132.hide();
+			
+			capitalLayer.hide(); labelLayer.hide();
+
+            //----- sulawesi barat layer -----
+            /*
+            SBmcaiGP.hide(); SBmcaiH.hide(); SBmcaiPM.hide();
+			
+		SBlyr7.hide();  SBlyr8.hide();  SBlyr9.hide();  SBlyr10.hide();  SBlyr11.hide();  
+		
+		SBlyr15.hide();  
+		
+		SBlyr17.hide();  SBlyr18.hide();  SBlyr19.hide();  SBlyr20.hide(); 
+		
+		SBlyr22.hide();  SBlyr23.hide();  
+		
+		//SBlyr25.hide();  SBlyr26.hide();  SBlyr27.hide();  SBlyr28.hide();   
+		
+		SBlyr30.hide();  SBlyr31.hide();  SBlyr32.hide();  SBlyr33.hide();   
+		
+		SBlyr35.hide();  SBlyr36.hide();  SBlyr37.hide();  
+		
+		SBlyr39.hide();  SBlyr40.hide();  SBlyr41.hide();  SBlyr42.hide();  SBlyr43.hide();  
+		
+		SBlyr45.hide();  SBlyr46.hide();  SBlyr47.hide();  
+		
+		SBlyr61.hide();  SBlyr62.hide();  
+		
+		SBlyr64.hide();  SBlyr65.hide();  SBlyr66.hide();  SBlyr67.hide();   SBlyr68.hide();  SBlyr69.hide();
+		
+		SBcapitalLayer.hide(); SBlabelLayer.hide();*/
 	}
     function fSetLegend() {
         fCreateLegend(legendLayers, "legendDiv");        
@@ -901,7 +1344,7 @@ require([
         fCreateCategoryGroup(legendSoil, "toggleSoil");
         fCreateCategoryGroup(legendTopography, "toggleTopography");
 	}
-	function fCheckLegendDiv() {
+	function fCheckLegendDiv() {		
         fHideLegendDiv(legendLayers,"legendDiv");
         fHideLegendDiv(legendAdministrative,"legendAdministrativeDiv");
         fHideLegendDiv(legendCarbonProject,"legendCarbonProjectDiv");
@@ -923,11 +1366,31 @@ require([
         fHideLegendDiv(legendSoil,"legendSoilDiv");
 		fHideLegendDiv(legendTopography,"legendTopographyDiv");
 	}
-	
+	function fKosongDiv() {
+		dom.byId("legendDiv").innerHTML="";
+		dom.byId("legendAdministrativeDiv").innerHTML="";
+		dom.byId("legendCarbonProjectDiv").innerHTML="";
+		dom.byId("legendClimateDiv").innerHTML="";
+		//dom.byId("legendEcologyDiv").innerHTML="";
+		dom.byId("legendEnergyDiv").innerHTML="";
+		dom.byId("legendForestryDiv").innerHTML="";
+		//dom.byId("legendHotspotDiv").innerHTML="";
+		dom.byId("legendHydrologyDiv").innerHTML="";
+		dom.byId("legendInfrastructureDiv").innerHTML="";
+		dom.byId("legendLandcoverDiv").innerHTML="";
+		dom.byId("legendLandscapeDiv").innerHTML="";
+		dom.byId("legendLandDegradationDiv").innerHTML="";
+		dom.byId("legendPermitAgricultureDiv").innerHTML="";
+		dom.byId("legendMiningDiv").innerHTML="";
+		dom.byId("legendPermitsDiv").innerHTML="";
+		dom.byId("legendLanduseSpatialPlanDiv").innerHTML="";
+		dom.byId("legendSocioEconomicDiv").innerHTML="";
+		dom.byId("legendSoilDiv").innerHTML="";
+		dom.byId("legendTopographyDiv").innerHTML="";
+	}
 	function fAdditionalInfo(iVal) {
-		fCheckLegendDiv();
+		fCheckLegendDivAll();
 		
-		//alert(iVal);
 		var targetLayer = map.getLayer(iVal);        
 		var iIsi1 = "<table><tr><td valign='top'>Layer Name</td><td valign='top'>";
 		var iIsi2 ="</td></tr><tr><td valign='top'>Description</td><td valign='top'>";
@@ -936,9 +1399,12 @@ require([
 		var iKet1 = "", iKet2 = "", iKet3 = "";
 		var iHasilPlantation="", iHasilBerbak="", iHasilCarbon="", iHasil ="";
 		
-			capitalLayer.hide();
-			labelLayer.hide();
-				
+		capitalLayer.hide();
+		labelLayer.hide();
+		
+		var iProvinceName = dijit.byId("provinceSelectLayer").get("value").trim();
+		
+		if (iProvinceName == "Jambi") {
 			for (var i = 1; i < 132; i++) {
 				//capital district label 
 				//district layer
@@ -1514,15 +1980,16 @@ require([
 					
 					iHasil = iHasil + iIsi1 + iKet1 + iIsi2 + iKet2 + iIsi3 + iKet3 + iIsi4
 				}
-				
-				
 			}
+		}
+			
 
 		
 		//iHasil = iHasilPlantation + iHasilBerbak + iHasilCarbon + iHasilCarbonMeasurement ;
 		//add layer sort description
 		dom.byId("shortDescriptionDiv").innerHTML=iHasil;
-	}
+	}	
+	
 	
 	function fHomeButton() {
 		hideLayers();
@@ -1544,91 +2011,11 @@ require([
 		})
 		
 		fAdditionalInfo(1);
-        fCheckLegendDiv();
+        fCheckLegendDivAll();
 	}
 		
 	function hideLayers() {
 		fHideAllFeatureLayers();
-	}
-	function fKosongDiv() {
-		dom.byId("legendDiv").innerHTML="";
-		dom.byId("legendAdministrativeDiv").innerHTML="";
-		dom.byId("legendCarbonProjectDiv").innerHTML="";
-		dom.byId("legendClimateDiv").innerHTML="";
-		//dom.byId("legendEcologyDiv").innerHTML="";
-		dom.byId("legendEnergyDiv").innerHTML="";
-		dom.byId("legendForestryDiv").innerHTML="";
-		//dom.byId("legendHotspotDiv").innerHTML="";
-		dom.byId("legendHydrologyDiv").innerHTML="";
-		dom.byId("legendInfrastructureDiv").innerHTML="";
-		dom.byId("legendLandcoverDiv").innerHTML="";
-		dom.byId("legendLandscapeDiv").innerHTML="";
-		dom.byId("legendLandDegradationDiv").innerHTML="";
-		dom.byId("legendPermitAgricultureDiv").innerHTML="";
-		dom.byId("legendMiningDiv").innerHTML="";
-		dom.byId("legendPermitsDiv").innerHTML="";
-		dom.byId("legendLanduseSpatialPlanDiv").innerHTML="";
-		dom.byId("legendSocioEconomicDiv").innerHTML="";
-		dom.byId("legendSoilDiv").innerHTML="";
-		dom.byId("legendTopographyDiv").innerHTML="";
-	}
-	function fHideAllFeatureLayers() {
-			//----- polygon layers group -----
-			//indonesiaBackgroundLayer, 
-			//indonesiaLayer.hide(); 
-			/*
-			mcaiGP.hide(); mcaiH.hide(); mcaiPM.hide();
-			lyr9.hide(); lyr10.hide(); lyr11.hide(); lyr17.hide(); lyr18.hide(); 
-			lyr20.hide(); lyr22.hide(); lyr23.hide(); lyr24.hide(); lyr25.hide(); lyr26.hide(); lyr27.hide(); lyr28.hide(); lyr29.hide(); 
-			lyr36.hide(); lyr37.hide(); lyr38.hide(); lyr39.hide(); lyr40.hide(); lyr41.hide(); lyr42.hide(); lyr43.hide(); 
-			lyr82.hide(); lyr83.hide(); lyr84.hide(); lyr85.hide(); lyr86.hide(); lyr87.hide(); lyr88.hide(); lyr89.hide(); 
-			lyr90.hide(); lyr91.hide(); lyr92.hide(); lyr97.hide(); lyr99.hide(); lyr101.hide(); lyr103.hide(); lyr104.hide(); 
-			lyr106.hide(); lyr107.hide(); lyr108.hide(); lyr109.hide(); lyr110.hide(); lyr111.hide(); lyr112.hide(); 
-			lyr113.hide(); lyr116.hide(); lyr119.hide(); lyr120.hide();  
-			//----- line layers group -----
-			lyr34.hide(); lyr55.hide(); lyr56.hide(); lyr57.hide(); lyr58.hide(); lyr59.hide(); lyr60.hide(); lyr61.hide(); 
-			lyr62.hide(); lyr63.hide(); lyr64.hide(); lyr65.hide(); lyr66.hide(); lyr67.hide(); lyr69.hide(); lyr70.hide(); 
-			lyr71.hide(); lyr72.hide(); lyr73.hide(); lyr74.hide(); lyr75.hide(); lyr76.hide(); lyr77.hide(); lyr78.hide(); 
-			lyr79.hide(); lyr80.hide(); lyr94.hide(); lyr95.hide(); lyr118.hide(); lyr122.hide(); lyr123.hide(); lyr124.hide(); 
-			lyr125.hide(); lyr126.hide(); lyr127.hide(); lyr128.hide(); lyr129.hide(); lyr130.hide(); lyr131.hide(); 
-			lyr132.hide(); 
-			//----- point layers group -----
-			lyr7.hide(); lyr8.hide(); lyr12.hide(); lyr14.hide(); lyr15.hide(); lyr16.hide(); lyr31.hide(); lyr32.hide(); 
-			lyr33.hide(); lyr50.hide(); lyr51.hide(); lyr52.hide(); lyr53.hide(); lyr115.hide();
-			*/
-			
-			
-			//indonesiaLayer.hide(); 
-			mcaiGP.hide(); mcaiH.hide(); mcaiPM.hide();
-			lyr7.hide(); lyr8.hide(); lyr9.hide(); lyr10.hide(); lyr11.hide(); lyr12.hide();
-			lyr14.hide(); //lyr15.hide(); 
-			lyr16.hide(); lyr17.hide(); lyr18.hide();
-			lyr20.hide();
-			//lyr22.hide(); lyr23.hide(); lyr24.hide(); lyr25.hide(); lyr26.hide(); lyr27.hide(); lyr28.hide(); lyr29.hide(); 
-			lyr31.hide(); lyr32.hide(); lyr33.hide(); lyr34.hide(); 
-			lyr36.hide(); //lyr37.hide(); lyr38.hide(); 
-			lyr39.hide(); lyr40.hide(); lyr41.hide(); lyr42.hide(); lyr43.hide();
-			//lyr45.hide(); lyr46.hide(); lyr47.hide(); lyr48.hide();
-			//lyr50.hide(); lyr51.hide(); lyr52.hide(); lyr53.hide();
-			lyr55.hide(); lyr56.hide(); lyr57.hide(); lyr58.hide(); lyr59.hide(); lyr60.hide(); lyr61.hide(); lyr62.hide(); lyr63.hide(); lyr64.hide(); lyr65.hide(); lyr66.hide(); lyr67.hide(); 
-			lyr69.hide(); 
-			//lyr70.hide(); lyr71.hide(); lyr72.hide(); lyr73.hide(); 
-			lyr74.hide(); lyr75.hide(); 
-			//lyr76.hide(); lyr77.hide(); lyr78.hide(); lyr79.hide(); lyr80.hide();
-			lyr82.hide(); lyr83.hide(); lyr84.hide(); lyr85.hide(); lyr86.hide(); lyr87.hide(); lyr88.hide(); lyr89.hide(); lyr90.hide(); lyr91.hide(); lyr92.hide(); 
-			lyr94.hide(); lyr95.hide(); 
-			lyr97.hide(); 
-			lyr99.hide();
-			lyr101.hide();
-			lyr103.hide(); lyr104.hide();
-			//lyr106.hide(); lyr107.hide(); 
-			lyr108.hide(); //lyr109.hide(); 
-			lyr110.hide(); lyr111.hide(); lyr112.hide(); lyr113.hide();
-			lyr115.hide(); lyr116.hide(); 
-			lyr118.hide(); lyr119.hide(); lyr120.hide(); 
-			lyr122.hide(); lyr123.hide(); lyr124.hide(); lyr125.hide(); lyr126.hide(); lyr127.hide(); lyr128.hide(); lyr129.hide(); lyr130.hide(); lyr131.hide(); lyr132.hide();
-			
-			capitalLayer.hide(); labelLayer.hide();
 	}
 	
 	function fLoadWidgets() {
@@ -1670,7 +2057,7 @@ require([
 			scalebarUnit: "metric"
 			},dojo.byId("scalebarDiv"));		
 		
-		//add slider
+		//add jambi slider
 		fCreateSlider(1, 3, "sliderGeneral");
 		fCreateSlider(7, 12, "sliderAdministrative");
 		//fCreateSlider(14, 14, "sliderAgriculture");
@@ -1692,6 +2079,35 @@ require([
 		fCreateSlider(115, 116, "sliderSocioEconomic");
 		fCreateSlider(118, 120, "sliderSoil");
 		fCreateSlider(122, 132, "sliderTopograpy");
+		
+		//add sulawesi barat slider
+		fCreateSlider(501, 503, "sliderGeneralSB");
+		fCreateSlider(507, 511, "sliderAdministrativeSB");
+		fCreateSlider(515, 515, "sliderClimateSB");
+		fCreateSlider(517, 520, "sliderEnergySB");
+		fCreateSlider(522, 523, "sliderForestrySB");
+		fCreateSlider(530, 533, "sliderHydrologySB");
+		fCreateSlider(535, 537, "sliderInfrastructureSB");
+		fCreateSlider(539, 543, "sliderLandcoverSB");
+		fCreateSlider(545, 547, "sliderLandscapeSB");
+		fCreateSlider(561, 562, "sliderSoilSB");
+		fCreateSlider(564, 569, "sliderTopograpySB");
+		
+		toggler = new Toggler({
+			node: "rightPane",
+			//showFunc: coreFx.wipeIn,
+			//hideFunc: coreFx.wipeOut
+		});
+		togglerJambiArea = new Toggler({
+			node: "jambiAreaDiv",
+			showFunc: coreFx.wipeIn,
+			hideFunc: coreFx.wipeOut
+		});
+		togglerSulawesiBaratArea = new Toggler({
+			node: "sulawesiBaratAreaDiv",
+			showFunc: coreFx.wipeIn,
+			hideFunc: coreFx.wipeOut
+		});
 	}
 	
 	function fRadioProvince() {
@@ -1735,7 +2151,6 @@ require([
 		dijit.byId("districtSelect").attr("disabled", true);
 		dijit.byId("landscapeSelect").attr("disabled", true);
 	}
-	
 	function fComboDisableZT() {
 		dijit.byId("provinceSelectZT").set("value","-----");
 		dijit.byId("districtSelectZT").set("value","-----");
@@ -1744,46 +2159,13 @@ require([
 		dijit.byId("provinceSelectZT").attr("disabled", true);
 		dijit.byId("districtSelectZT").attr("disabled", true);
 		dijit.byId("landscapeSelectZT").attr("disabled", true);
-	}
-	
+	}	
 	function fLoadAreaList() {
 		//set analysis combo data
 		var provinceStore = new Memory({
 			data: [
-				/*{name:"Aceh", id:"11"},
-				{name:"Bali", id:"51"},
-				{name:"Banten", id:"36"},
-				{name:"Bengkulu", id:"17"},
-				{name:"Gorontalo", id:"75"},
-				{name:"Jakarta", id:"31"},*/
 				{name:"Jambi", id:"15"},
-				/*{name:"Jawa Barat", id:"32"},
-				{name:"Jawa Tengah", id:"33"},
-				{name:"Jawa Timur", id:"35"},
-				{name:"Kalimantan Barat", id:"61"},
-				{name:"Kalimantan Selatan", id:"63"},
-				{name:"Kalimantan Tengah", id:"62"},
-				{name:"Kalimantan Timur", id:"64"},
-				{name:"Kalimantan Utara", id:"--"},
-				{name:"Kepulauan Bangka Belitung", id:"19"},
-				{name:"Kepulauan Riau", id:"21"},
-				{name:"Lampung", id:"18"},
-				{name:"Maluku", id:"81"},
-				{name:"Maluku Utara", id:"82"},
-				{name:"Nusa Tenggara Barat", id:"52"},
-				{name:"Nusa Tenggara Timur", id:"53"},
-				{name:"Papua", id:"94"},
-				{name:"Papua Barat", id:"91"},
-				{name:"Riau", id:"14"},*/
 				{name:"Sulawesi Barat", id:"76"},
-				/*{name:"Sulawesi Selatan", id:"73"},
-				{name:"Sulawesi Tengah", id:"72"},
-				{name:"Sulawesi Tenggara", id:"74"},
-				{name:"Sulawesi Utara", id:"71"},
-				{name:"Sumatera Barat", id:"13"},
-				{name:"Sumatera Selatan", id:"16"},
-				{name:"Sumatera Utara", id:"12"},
-				{name:"Yogyakarta", id:"34"}*/
 			]
 		});
 		var districtStore = new Memory({
@@ -1844,65 +2226,37 @@ require([
 		}, "processButton");
 		fComboDisable();
 		dijit.byId("provinceSelect").attr("disabled", false);
-	}
-	
+	}	
 	function fLoadZoomTo() {
-	//set analysis combo data
+	
 		var provinceStoreZT = new Memory({
 			data: [
-				/*{name:"Aceh", id:"11"},
-				{name:"Bali", id:"51"},
-				{name:"Banten", id:"36"},
-				{name:"Bengkulu", id:"17"},
-				{name:"Gorontalo", id:"75"},
-				{name:"Jakarta", id:"31"},*/
 				{name:"Jambi", id:"15"},
-				/*{name:"Jawa Barat", id:"32"},
-				{name:"Jawa Tengah", id:"33"},
-				{name:"Jawa Timur", id:"35"},
-				{name:"Kalimantan Barat", id:"61"},
-				{name:"Kalimantan Selatan", id:"63"},
-				{name:"Kalimantan Tengah", id:"62"},
-				{name:"Kalimantan Timur", id:"64"},
-				{name:"Kalimantan Utara", id:"--"},
-				{name:"Kepulauan Bangka Belitung", id:"19"},
-				{name:"Kepulauan Riau", id:"21"},
-				{name:"Lampung", id:"18"},
-				{name:"Maluku", id:"81"},
-				{name:"Maluku Utara", id:"82"},
-				{name:"Nusa Tenggara Barat", id:"52"},
-				{name:"Nusa Tenggara Timur", id:"53"},
-				{name:"Papua", id:"94"},
-				{name:"Papua Barat", id:"91"},
-				{name:"Riau", id:"14"},
 				{name:"Sulawesi Barat", id:"76"},
-				{name:"Sulawesi Selatan", id:"73"},
-				{name:"Sulawesi Tengah", id:"72"},
-				{name:"Sulawesi Tenggara", id:"74"},
-				{name:"Sulawesi Utara", id:"71"},
-				{name:"Sumatera Barat", id:"13"},
-				{name:"Sumatera Selatan", id:"16"},
-				{name:"Sumatera Utara", id:"12"},
-				{name:"Yogyakarta", id:"34"}*/
 			]
 		});
 		
 		var districtStoreZT = new Memory({
 			data: [
 				{name:"Muaro Jambi", id:"MJ"},
-				{name:"Merangin", id:"MN"}
-				
-				//{name:"Mamuju", id:"MJ"},
-				//{name:"Mamasa", id:"MS"}
+				{name:"Merangin", id:"MN"},				
+				{name:"Mamuju", id:"MM"},
+				{name:"Mamuju Utara", id:"MU"},
+				{name:"Majene", id:"ME"},
+				{name:"Mamasa", id:"MS"},
+				{name:"Polewali Mandar", id:"PM"}
 			]
 		});
 		var landscapeStoreZT = new Memory({
 			data: [
 				{name:"Berbak", id:"BT"},
-				{name:"Sungai Tenang", id:"ST"}
+				{name:"Sungai Tenang", id:"ST"},
+				{name:"Bonehau Kalumpang", id:"BK"},
+				{name:"Sumarorong Pana", id:"ST"},
+				{name:"Mambi Bambang", id:"SA"}
 			]
 		});
-									
+
 		var radioProvinceZT = new RadioButton({
 			checked: true,
 			value: "province",
@@ -1918,6 +2272,19 @@ require([
 			value: "landscape",
 			name: "rbAnalysisZT",
 		}, "radioLandscapeZT");
+		
+		var comboBox = new ComboBox({
+			id: "provinceSelectLayer",
+			name: "provinceLayer",
+			placeHolder: "Select a Province",
+			value: "Jambi",
+			store: provinceStoreZT,
+			searchAttr: "name"
+		}, "provinceSelectLayer");
+		var selectLayerButton = new Button({
+			label: "Select",
+			//onClick: fAnalysis(),
+		}, "selectLayerButton");
 		
 		
 		var comboBox = new ComboBox({
@@ -2049,7 +2416,7 @@ require([
 	}
 
 	function fZoomTo() {
-		fCheckLegendDiv();
+		fCheckLegendDivAll();
 
 		var iArea, iSelectArea, iSelectAnalysis;
 		
@@ -2099,25 +2466,29 @@ require([
 					break;
 				
 				case 'Mamuju':
-					map.centerAndZoom(esri.geometry.Point([13279863.546149915,-200570.76222028106], 
-						new esri.SpatialReference({ wkid: 102100 })),8);
+					map.centerAndZoom(esri.geometry.Point([13307686.624445667,-270310.92384258437], 
+						new esri.SpatialReference({ wkid: 102100 })),9);
 					break;
 					
 				case 'Mamasa':
-					map.centerAndZoom(esri.geometry.Point([13278640.55369733,-328526.3475696624], 
+					map.centerAndZoom(esri.geometry.Point([13284908.390016677,-333065.72406475135], 
 						new esri.SpatialReference({ wkid: 102100 })),10);
 					break;
-			}
-			
-			switch (iSelectArea) {
-				case "Mamuju" :
-					//provinceLayer.show();
+					
+				case 'Mamuju Utara':
+					map.centerAndZoom(esri.geometry.Point([13325572.889064377,-151374.90783096413], 
+						new esri.SpatialReference({ wkid: 102100 })),9);
 					break;
 					
-				case "Mamasa" :
-					//provinceLayer.show();
+				case 'Majene':
+					map.centerAndZoom(esri.geometry.Point([13250053.105118625,-363640.53537883365], 
+						new esri.SpatialReference({ wkid: 102100 })),10);
 					break;
-			
+					
+				case 'Polewali Mandar':
+					map.centerAndZoom(esri.geometry.Point([13273595.709830476,-376940.57830043713], 
+						new esri.SpatialReference({ wkid: 102100 })),10);
+					break;
 			}
 		}
 		
@@ -2135,10 +2506,66 @@ require([
 					map.centerAndZoom(esri.geometry.Point([11352427.440911409,-282511.2565419838], 
 						new esri.SpatialReference({ wkid: 102100 })),12); 
 					break;
+					
+				case 'Bonehau Kalumpang':
+					map.centerAndZoom(esri.geometry.Point([13296106.414660493,-281661.82254292985], 
+						new esri.SpatialReference({ wkid: 102100 })),11); 
+					break;
+					
+				case 'Sumarorong Pana':
+					map.centerAndZoom(esri.geometry.Point([13298514.181051472,-348888.18891965173], 
+						new esri.SpatialReference({ wkid: 102100 })),12); 
+					break;
+				case 'Mambi Bambang':
+					map.centerAndZoom(esri.geometry.Point([13276423.879877085,-325957.08043412975], 
+						new esri.SpatialReference({ wkid: 102100 })),12); 
+					break;
 			}			
 		}
 	}
-
-	//end of scripts
+	
+	function fSelectProvinceLayer() {
+		var iSelectProvince;
+		var iOk = 0;
+		iSelectProvince = dijit.byId("provinceSelectLayer").get("value").trim();
+		
+		switch (iSelectProvince)
+			{
+				case 'Jambi':
+					togglerJambiArea.show();
+					togglerSulawesiBaratArea.hide();
+					
+					fHideAllFeatureLayers();
+					
+					iOk=1;
+					break;
+					
+				case 'Sulawesi Barat':
+					//load sulawesi barat
+					togglerJambiArea.hide();
+					togglerSulawesiBaratArea.show();
+					
+					fHideAllFeatureLayers();
+					
+					iOk=1;
+					break;
+			}
+		
+		if (iOk == 1) {
+			dojo.forEach (dojo.query("input[type=checkbox]"), function(item){
+			var widget = dijit.getEnclosingWidget(item);
+			//alert(widget)
+			widget.set('checked', false);
+			})
+			
+			fAdditionalInfo(1);
+			fCheckLegendDivAll();
+		}
+	}
+	
+	
+	
+	
+	//----- end of scripts
       });
 	  

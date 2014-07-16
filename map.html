@@ -54,13 +54,22 @@
 
   <div id="rightPane"
        data-dojo-type="dijit/layout/ContentPane"
-       data-dojo-props="region:'right'"
-	   style=" background-image: url(./images/batik-tile.jpg);">
+       splitter="true"
+	   data-dojo-props="region:'right' "
+	   
+	   style=" background-image: url(./images/batik-tile.jpg); ">
 
     <div data-dojo-type="dijit/layout/AccordionContainer">
+	
+		<!-- test joining new TOC -->
+		<!--<div data-dojo-type="dijit/layout/ContentPane" id="TOCPane"
+			data-dojo-props="title:'List Layer', selected:true ">
+				<div id="TOCDiv" style="visibility=hidden;"></div>
+		</div>-->
+		
 		<!-- filter pane -->
 		<div data-dojo-type="dijit/layout/ContentPane"
-           data-dojo-props="title:'Main Navigation', selected:true">
+           data-dojo-props="title:'Main Navigation'">
 		   
 		   <!-- tab container -->
 			<div style="width: 100%; height: 100%">
@@ -88,72 +97,155 @@
 							</div>
 						</div>
 						<div data-dojo-type="dijit/layout/ContentPane" title="Layer Category">
-							<b>MCA-Indonesia Working Area</b></br>
-							<div id="sliderGeneral"></div>
-							<div id="toggleGeneral" style="padding: 2px 2px;visibility=hidden;"></div></br>
-							<b>Administrative</b></br>
-							<div id="sliderAdministrative"></div>
-							<div id="toggleAdministrative" style="padding: 2px 2px;"></div></br>
-							<b>Carbon Project</b></br>
-							<div id="sliderCarbonProject"></div>
-							<div id="toggleCarbonProject" style="padding: 2px 2px;"></div></br>
-							<b>Climate</b></br>
-							<div id="sliderClimate"></div>
-							<div id="toggleClimate" style="padding: 2px 2px;"></div></br>
-							<!--<b>Ecology</b></br>
-							<div id="sliderEcology"></div>
-							<div id="toggleEcology" style="padding: 2px 2px;"></div></br>-->
-							<b>Energy</b></br>
-							<div id="sliderEnergy"></div>
-							<div id="toggleEnergy" style="padding: 2px 2px;"></div></br>
-							<b>Forestry</b></br>
-							<div id="sliderForestry"></div>
-							<div id="toggleForestry" style="padding: 2px 2px;"></div></br>
-							<!--<b>Hazard Vunerabillity</b></br>
-							<div id="toggleHazardVunerabillity" style="padding: 2px 2px;"></div></br>-
-							<b>Hotspot</b></br>
-							<div id="sliderHotspot"></div>
-							<div id="toggleHotspot" style="padding: 2px 2px;"></div></br>-->
-							<b>Hydrology</b></br>
-							<div id="sliderHydrology"></div>
-							River
-							<div id="toggleHydrology" style="padding: 2px 2px;"></div></br>
-							<b>Infrastructure</b></br>
-							<div id="sliderInfrastructure"></div>
-							Road
-							<div id="toggleInfrastructure" style="padding: 2px 2px;"></div></br>
-							<b>Landcover</b></br>
-							<div id="sliderLandcover"></div>
-							<div id="toggleLandcover" style="padding: 2px 2px;"></div></br>
-							<b>Landscape</b></br>
-							<div id="sliderLandscape"></div>
-							Landscape
-							<div id="toggleLandscape" style="padding: 2px 2px;"></div></br>
-							<b>Land Degradation</b></br>
-							<div id="sliderLandDegradation"></div>
-							<div id="toggleLandDegradation" style="padding: 2px 2px;"></div></br>
-							<b>Landuse (Spatial Planning)</b></br>
-							<div id="sliderLanduseSpatialPlan"></div>
-							<div id="toggleLanduseSpatialPlan" style="padding: 2px 2px;"></div></br>
-							<b>Permit (Agriculture)</b></br>
-							<div id="sliderPermitAgriculture"></div>
-							<div id="togglePermitAgriculture" style="padding: 2px 2px;"></div></br>
-							<b>Permit (Mining)</b></br>
-							<div id="sliderMining"></div>
-							<div id="toggleMining" style="padding: 2px 2px;"></div></br>
-							<b>Permit (Forestry)</b></br>
-							<div id="sliderPermits"></div>
-							<div id="togglePermits" style="padding: 2px 2px;"></div></br>
-							<b>Socio Economic</b></br>
-							<div id="sliderSocioEconomic"></div>
-							<div id="toggleSocioEconomic" style="padding: 2px 2px;"></div></br>
-							<b>Soil</b></br>
-							<div id="sliderSoil"></div>
-							<div id="toggleSoil" style="padding: 2px 2px;"></div></br>
-							<b>Topography</b></br>
-							<div id="sliderTopograpy"></div>
-							Contour Line
-							<div id="toggleTopography" style="padding: 2px 2px;"></div></br>
+							<div id="provinceLayer">
+								<table border="0" width="100%">
+									<tr>
+										<td ><font face="Arial" size="2"><label for="radioProvinceLayer">Province</label></font></td>
+										<td ><font face="Arial" size="2"><input id="provinceSelectLayer"></font></td>
+									</tr>
+									<tr>
+										<td colspan="2"><button id="selectLayerButton" type="button"></button></td>
+									</tr>
+								</table>							
+							</div>
+							</br>
+							<div id="jambiAreaDiv">
+								<b>MCA-Indonesia Working Area</b></br>
+								<div id="sliderGeneral"></div>
+								<div id="toggleGeneral" style="padding: 2px 2px;visibility=hidden;"></div></br>
+								<b>Administrative</b></br>
+								<div id="sliderAdministrative"></div>
+								<div id="toggleAdministrative" style="padding: 2px 2px;"></div></br>
+								<b>Carbon Project</b></br>
+								<div id="sliderCarbonProject"></div>
+								<div id="toggleCarbonProject" style="padding: 2px 2px;"></div></br>
+								<b>Climate</b></br>
+								<div id="sliderClimate"></div>
+								<div id="toggleClimate" style="padding: 2px 2px;"></div></br>
+								<!--<b>Ecology</b></br>
+								<div id="sliderEcology"></div>
+								<div id="toggleEcology" style="padding: 2px 2px;"></div></br>-->
+								<b>Energy</b></br>
+								<div id="sliderEnergy"></div>
+								<div id="toggleEnergy" style="padding: 2px 2px;"></div></br>
+								<b>Forestry</b></br>
+								<div id="sliderForestry"></div>
+								<div id="toggleForestry" style="padding: 2px 2px;"></div></br>
+								<!--<b>Hazard Vunerabillity</b></br>
+								<div id="toggleHazardVunerabillity" style="padding: 2px 2px;"></div></br>-
+								<b>Hotspot</b></br>
+								<div id="sliderHotspot"></div>
+								<div id="toggleHotspot" style="padding: 2px 2px;"></div></br>-->
+								<b>Hydrology</b></br>
+								<div id="sliderHydrology"></div>
+								River
+								<div id="toggleHydrology" style="padding: 2px 2px;"></div></br>
+								<b>Infrastructure</b></br>
+								<div id="sliderInfrastructure"></div>
+								Road
+								<div id="toggleInfrastructure" style="padding: 2px 2px;"></div></br>
+								<b>Landcover</b></br>
+								<div id="sliderLandcover"></div>
+								<div id="toggleLandcover" style="padding: 2px 2px;"></div></br>
+								<b>Landscape</b></br>
+								<div id="sliderLandscape"></div>
+								Landscape
+								<div id="toggleLandscape" style="padding: 2px 2px;"></div></br>
+								<b>Land Degradation</b></br>
+								<div id="sliderLandDegradation"></div>
+								<div id="toggleLandDegradation" style="padding: 2px 2px;"></div></br>
+								<b>Landuse (Spatial Planning)</b></br>
+								<div id="sliderLanduseSpatialPlan"></div>
+								<div id="toggleLanduseSpatialPlan" style="padding: 2px 2px;"></div></br>
+								<b>Permit (Agriculture)</b></br>
+								<div id="sliderPermitAgriculture"></div>
+								<div id="togglePermitAgriculture" style="padding: 2px 2px;"></div></br>
+								<b>Permit (Mining)</b></br>
+								<div id="sliderMining"></div>
+								<div id="toggleMining" style="padding: 2px 2px;"></div></br>
+								<b>Permit (Forestry)</b></br>
+								<div id="sliderPermits"></div>
+								<div id="togglePermits" style="padding: 2px 2px;"></div></br>
+								<b>Socio Economic</b></br>
+								<div id="sliderSocioEconomic"></div>
+								<div id="toggleSocioEconomic" style="padding: 2px 2px;"></div></br>
+								<b>Soil</b></br>
+								<div id="sliderSoil"></div>
+								<div id="toggleSoil" style="padding: 2px 2px;"></div></br>
+								<b>Topography</b></br>
+								<div id="sliderTopograpy"></div>
+								Contour Line
+								<div id="toggleTopography" style="padding: 2px 2px;"></div></br>
+							</div>
+							<div id="sulawesiBaratAreaDiv">
+								<b>MCA-Indonesia Working Area</b></br>
+								<div id="sliderGeneralSB"></div>
+								<div id="toggleGeneralSB" style="padding: 2px 2px;visibility=hidden;"></div></br>
+								<b>Administrative</b></br>
+								<div id="sliderAdministrativeSB"></div>
+								<div id="toggleAdministrativeSB" style="padding: 2px 2px;"></div></br>
+								<!--<b>Carbon Project</b></br>
+								<div id="sliderCarbonProject"></div>
+								<div id="toggleCarbonProject" style="padding: 2px 2px;"></div></br>-->
+								<b>Climate</b></br>
+								<div id="sliderClimateSB"></div>
+								<div id="toggleClimateSB" style="padding: 2px 2px;"></div></br>
+								<!--<b>Ecology</b></br>
+								<div id="sliderEcology"></div>
+								<div id="toggleEcology" style="padding: 2px 2px;"></div></br>-->
+								<b>Energy</b></br>
+								<div id="sliderEnergySB"></div>
+								<div id="toggleEnergySB" style="padding: 2px 2px;"></div></br>
+								<b>Forestry</b></br>
+								<div id="sliderForestrySB"></div>
+								<div id="toggleForestrySB" style="padding: 2px 2px;"></div></br>
+								<!--<b>Hazard Vunerabillity</b></br>
+								<div id="toggleHazardVunerabillity" style="padding: 2px 2px;"></div></br>-
+								<b>Hotspot</b></br>
+								<div id="sliderHotspot"></div>
+								<div id="toggleHotspot" style="padding: 2px 2px;"></div></br>-->
+								<b>Hydrology</b></br>
+								<div id="sliderHydrologySB"></div>
+								River
+								<div id="toggleHydrologySB" style="padding: 2px 2px;"></div></br>
+								<b>Infrastructure</b></br>
+								<div id="sliderInfrastructureSB"></div>
+								Road
+								<div id="toggleInfrastructureSB" style="padding: 2px 2px;"></div></br>
+								<b>Landcover</b></br>
+								<div id="sliderLandcoverSB"></div>
+								<div id="toggleLandcoverSB" style="padding: 2px 2px;"></div></br>
+								<b>Landscape</b></br>
+								<div id="sliderLandscapeSB"></div>
+								Landscape
+								<div id="toggleLandscapeSB" style="padding: 2px 2px;"></div></br>
+								<!--<b>Land Degradation</b></br>
+								<div id="sliderLandDegradation"></div>
+								<div id="toggleLandDegradation" style="padding: 2px 2px;"></div></br>
+								<b>Landuse (Spatial Planning)</b></br>
+								<div id="sliderLanduseSpatialPlan"></div>
+								<div id="toggleLanduseSpatialPlan" style="padding: 2px 2px;"></div></br>
+								<b>Permit (Agriculture)</b></br>
+								<div id="sliderPermitAgriculture"></div>
+								<div id="togglePermitAgriculture" style="padding: 2px 2px;"></div></br>
+								<b>Permit (Mining)</b></br>
+								<div id="sliderMining"></div>
+								<div id="toggleMining" style="padding: 2px 2px;"></div></br>
+								<b>Permit (Forestry)</b></br>
+								<div id="sliderPermits"></div>
+								<div id="togglePermits" style="padding: 2px 2px;"></div></br>
+								<b>Socio Economic</b></br>
+								<div id="sliderSocioEconomic"></div>
+								<div id="toggleSocioEconomic" style="padding: 2px 2px;"></div></br>-->
+								<b>Soil</b></br>
+								<div id="sliderSoilSB"></div>
+								<div id="toggleSoilSB" style="padding: 2px 2px;"></div></br>
+								<b>Topography</b></br>
+								<div id="sliderTopograpySB"></div>
+								Contour Line
+								<div id="toggleTopographySB" style="padding: 2px 2px;"></div></br>
+							</div>
+							
 						</div>
 				</div>
 			</div>
@@ -177,7 +269,7 @@
 				<div id = "printButton"></div>
 				<div id="searchLayerData">
 					<div data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'top'" style="height:50px;">
-					  Layer data: <input type="text" id="findLayer" size="30" value="-----" />      
+					  Layer data: <input type="text" id="findLayer" size="30" value="-----" /></br>
 						  <button id="search" data-dojo-type="dijit.form.Button" type="button" data-dojo-attach-point="button" >Search       
 						  </button>
 						  <button id="clearSelectionButton" data-dojo-type="dijit.form.Button" type="button" data-dojo-attach-point="button" >Clear search       
@@ -207,27 +299,32 @@
 	   <div id="header"><b>MILLENNIUM CHALLENGE ACCOUNT - INDONESIA</b></div>
 		<div id="subHeader">Reducing poverty through economic growth</div>
   </div>
-  
+
   <div id="map"
        data-dojo-type="dijit/layout/ContentPane"
-       data-dojo-props="region:'center'"       
+       data-dojo-props="region:'center'"
 	   >
 	   <!--<img id="loadingImg" src="./images/loading5.gif" style="position:absolute; right:512px; top:256px; z-index:100;" />-->
 	   
-		<div id="navToolbar" data-dojo-type="dijit/Toolbar">
+	   <div id="navToolbar" data-dojo-type="dijit/Toolbar" style="position:absolute; width:98%; z-Index:995;">
 			<div data-dojo-type="dijit/form/Button" id="zoomin"  data-dojo-props="iconClass:'zoominIcon'">Zoom In</div>
 			<div data-dojo-type="dijit/form/Button" id="zoomout" data-dojo-props="iconClass:'zoomoutIcon'">Zoom Out</div>
 			<!--<div data-dojo-type="dijit/form/Button" id="zoomfullext" data-dojo-props="iconClass:'zoomfullextIcon'">Full Extent</div>-->
 			<div data-dojo-type="dijit/form/Button" id="zoomprev" data-dojo-props="iconClass:'zoomprevIcon'">Prev Extent</div>
 			<div data-dojo-type="dijit/form/Button" id="zoomnext" data-dojo-props="iconClass:'zoomnextIcon'">Next Extent</div>
 			<div data-dojo-type="dijit/form/Button" id="pan" data-dojo-props="iconClass:'panIcon'">Pan</div>
+			<!--<div data-dojo-type="dijit/form/Button" id="closePane" data-dojo-props="iconClass:'panIcon'">Hide Pane</div>-->
 			<!--<div data-dojo-type="dijit/form/Button" id="deactivate" data-dojo-props="iconClass:'deactivateIcon'">Deactivate</div>-->
 		</div>
-
-	   <div id="HomeButton"></div>
-	   	<div id="help" style="position:absolute; right:20px; top:13px; z-Index:998;">
+		
+	   <div id="help" style="position:absolute; right:50px; top:13px; z-Index:998;">
 			<a target="_blank" href="./help/about.html">About</a> &nbsp <a target="_blank" href="./help/quickguide.html" >Quick Guide</a>
 		</div>
+
+	   	<div id="closePane" 
+		   data-dojo-type="dijit/form/Button"
+		   style="overflow:hidden; position:absolute; top: 7px; right: 5px; z-Index:997;"><img id="closePaneImg" src="./images/open.png"/></div>
+		   
 	   <div style="position:absolute; left:20px; top:50px; z-Index:999;">
           <div data-dojo-type="dijit/TitlePane" 
                data-dojo-props="title:'Legend', closable:false,  open:false">
@@ -255,10 +352,35 @@
 				<div id="legendSoilDiv" style=""></div>
 				<div id="legendTopographyDiv" style=""></div>				
 		   </div>
+		   <div id="legendFlyDivSB" style="visibility=hidden;">
+				<div id="legendDivSB"></div>
+				<div id="legendAdministrativeDivSB" style=""></div>
+				<div id="legendCarbonProjectDivSB" style=""></div>
+				<div id="legendClimateDivSB" style=""></div>
+				<!--<div id="legendEcologyDivSB" style=""></div>-->
+				<div id="legendEnergyDivSB" style=""></div>
+				<div id="legendForestryDivSB" style=""></div>
+				<!--<div id="legendHazardVunerabillityDivSB" style=""></div>
+				<div id="legendHotspotDivSB" style=""></div>-->
+				<div id="legendHydrologyDivSB" style=""></div>
+				<div id="legendInfrastructureDivSB" style=""></div>
+				<div id="legendLandcoverDivSB" style=""></div>
+				<div id="legendLandscapeDivSB" style=""></div>
+				<div id="legendLandDegradationDivSB" style=""></div>
+				<div id="legendLanduseSpatialPlanDivSB" style=""></div>
+				<div id="legendPermitAgricultureDivSB" style=""></div>
+				<div id="legendMiningDivSB" style=""></div>
+				<div id="legendPermitsDivSB" style=""></div>
+				<div id="legendSocioEconomicDivSB" style=""></div>
+				<div id="legendSoilDivSB" style=""></div>
+				<div id="legendTopographyDivSB" style=""></div>				
+		   </div>
           </div>
-        </div>
-	   
+        </div>	   
   </div>  
+  
+  <div id="HomeButton"></div>
+  
 </div>
 </body>
 </html>
