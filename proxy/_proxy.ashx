@@ -21,7 +21,9 @@ using System.Web.Caching;
 public class proxy : IHttpHandler {
   
     public void ProcessRequest (HttpContext context) {
-
+        // use the following line to ignore invalid (self signed) ssl certs:
+        System.Net.ServicePointManager.ServerCertificateValidationCallback = delegate(object s, System.Security.Cryptography.X509Certificates.X509Certificate certificate, System.Security.Cryptography.X509Certificates.X509Chain chain, System.Net.Security.SslPolicyErrors sslPolicyErrors) { return true; };
+        
         HttpResponse response = context.Response;
 
         // Get the URL requested by the client (take the entire querystring at once
@@ -69,6 +71,8 @@ public class proxy : IHttpHandler {
     
         // Send the request to the server
         System.Net.WebResponse serverResponse = null;
+        
+        
         try
         {
             serverResponse = req.GetResponse();
@@ -90,8 +94,7 @@ public class proxy : IHttpHandler {
 
                 // Text response
                 if (serverResponse.ContentType.Contains("text") || 
-                    serverResponse.ContentType.Contains("json") ||
-                    serverResponse.ContentType.Contains("xml"))
+                    serverResponse.ContentType.Contains("json"))
                 {
                     using (StreamReader sr = new StreamReader(byteStream))
                     {
@@ -205,7 +208,7 @@ public class ProxyConfig
 
     public static string GetFilename(HttpContext context)
     {
-        return context.Server.MapPath("~/proxy.config");
+        return context.Server.MapPath("proxy.config");
     }
     #endregion
 

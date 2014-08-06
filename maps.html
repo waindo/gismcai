@@ -1,0 +1,264 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!--The viewport meta tag is used to improve the presentation and behavior of the samples on iOS devices-->
+<meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">
+
+<title>Map - Millennium Challenge Account Indonesia</title>	
+<link rel="shortcut icon" href="./images/mca-favicon.png" type="image/x-icon">
+<link rel="stylesheet" href="http://localhost/arcgis_js_api/library/3.9/js/dojo/dijit/themes/nihilo/nihilo.css">
+<link rel="stylesheet" href="http://localhost/arcgis_js_api/library/3.9/js/dojo/dijit/themes/claro/claro.css"> 
+<link rel="stylesheet" href="http://localhost/arcgis_js_api/library/3.9/js/esri/css/esri.css">
+
+<link rel="stylesheet" type="text/css" href="./js/agsjs/css/agsjs.css" />
+<link rel="stylesheet" href="./css/template.css">
+<script type="text/javascript">
+    // helpful for understanding dojoConfig.packages vs. dojoConfig.paths:
+    // http://www.sitepen.com/blog/2013/06/20/dojo-faq-what-is-the-difference-packages-vs-paths-vs-aliases/
+    var dojoConfig = { 
+        paths: {
+            //if you want to host on your own server, download and put in folders then use path like: 
+            agsjs: location.pathname.replace(/\/[^/]+$/, '') + '/./js/agsjs' 
+        }
+    };
+</script>
+<script src="http://localhost/arcgis_js_api/library/3.9/"></script>
+<script src="./js/mcais.js"></script>
+
+<script>
+    function load() {
+    document.getElementById("contentMCAI").style.visibility = "visible";
+	document.getElementById("loadingDiv").style.visibility = "hidden";
+    }
+    window.onload = load;
+</script>
+	
+</head>
+
+<body class="claro" background="images/batik-tile.jpg">
+<!--[if IE 7]>
+<style>
+  html, body {
+    margin: 0;
+  }
+</style>
+<![endif]-->
+<div id='loadingDiv' style='position:absolute; left:50%; top:50%; padding:2px; z-index:20001; height:auto; font:bold 13px tahoma,arial,helvetica;'>
+    	<img src='./images/loading.gif'>&nbsp;&nbsp;<span id="loading-msg">Loading...</span>
+</div>
+
+<div id="contentMCAI" data-dojo-type="dijit/layout/BorderContainer"
+     data-dojo-props="design:'headline', gutters:false"
+     style="width: 100%; height: 100%; margin: 0; visibility: hidden;">
+
+  <div id="rightPane"
+       data-dojo-type="dijit/layout/ContentPane"
+       data-dojo-props="region:'right'"
+	   style=" background-image: url(./images/batik-tile.jpg);">
+
+    <div data-dojo-type="dijit/layout/AccordionContainer">
+		<!-- filter pane -->
+		<div data-dojo-type="dijit/layout/ContentPane"
+           data-dojo-props="title:'Main Navigation', selected:true">
+		   
+		   <!-- tab container -->
+			<div style="width: 100%; height: 100%">
+				<div data-dojo-type="dijit/layout/TabContainer" style="width: 100%; height: 100%;">
+						<div data-dojo-type="dijit/layout/ContentPane" title="Location" data-dojo-props="selected:true">
+							<!-- zoom to div -->
+							<div id="zoomTo">
+								<table border="0" width="100%">
+									<tr>
+										<td ><font face="Arial" size="2"><input type="radio" name="provinceZT" id="radioProvinceZT" checked value="province"/> <label for="radioProvinceZT">Province</label></font></td>
+										<td ><font face="Arial" size="2"><input id="provinceSelectZT"></font></td>
+									</tr>
+									<tr>
+										<td ><font face="Arial" size="2"><input type="radio" name="districtZT" id="radioDistrictZT" checked value="district"/> <label for="radioDistrictZT">District</label></font></td>
+										<td ><font face="Arial" size="2"><input id="districtSelectZT"></font></td>
+									</tr>
+									<tr>
+										<td ><font face="Arial" size="2"><input type="radio" name="landscapeZT" id="radioLandscapeZT" checked value="landscape"/> <label for="radioLandscapeZT">Landscape</label></font></td>
+										<td ><font face="Arial" size="2"><input id="landscapeSelectZT"></font></td>
+									</tr>
+									<tr>
+										<td colspan="2"><button id="zoomToButton" type="button"></button></td>
+									</tr>
+								</table>							
+							</div>
+						</div>
+						<div data-dojo-type="dijit/layout/ContentPane" title="Layer Category">
+							<b>MCA-Indonesia Working Area</b></br>
+							<div id="sliderGeneral"></div>
+							<div id="toggleGeneral" style="padding: 2px 2px;visibility=hidden;"></div></br>
+							<b>Administrative</b></br>
+							<div id="sliderAdministrative"></div>
+							<div id="toggleAdministrative" style="padding: 2px 2px;"></div></br>
+							<!--<b>Carbon Project</b></br>
+							<div id="sliderCarbonProject"></div>
+							<div id="toggleCarbonProject" style="padding: 2px 2px;"></div></br>-->
+							<b>Climate</b></br>
+							<div id="sliderClimate"></div>
+							<div id="toggleClimate" style="padding: 2px 2px;"></div></br>
+							<!--<b>Ecology</b></br>
+							<div id="sliderEcology"></div>
+							<div id="toggleEcology" style="padding: 2px 2px;"></div></br>-->
+							<b>Energy</b></br>
+							<div id="sliderEnergy"></div>
+							<div id="toggleEnergy" style="padding: 2px 2px;"></div></br>
+							<b>Forestry</b></br>
+							<div id="sliderForestry"></div>
+							<div id="toggleForestry" style="padding: 2px 2px;"></div></br>
+							<!--<b>Hazard Vunerabillity</b></br>
+							<div id="toggleHazardVunerabillity" style="padding: 2px 2px;"></div></br>-
+							<b>Hotspot</b></br>
+							<div id="sliderHotspot"></div>
+							<div id="toggleHotspot" style="padding: 2px 2px;"></div></br>-->
+							<b>Hydrology</b></br>
+							<div id="sliderHydrology"></div>
+							River
+							<div id="toggleHydrology" style="padding: 2px 2px;"></div></br>
+							<b>Infrastructure</b></br>
+							<div id="sliderInfrastructure"></div>
+							Road
+							<div id="toggleInfrastructure" style="padding: 2px 2px;"></div></br>
+							<b>Landcover</b></br>
+							<div id="sliderLandcover"></div>
+							<div id="toggleLandcover" style="padding: 2px 2px;"></div></br>
+							<b>Landscape</b></br>
+							<div id="sliderLandscape"></div>
+							Landscape
+							<div id="toggleLandscape" style="padding: 2px 2px;"></div></br>
+							<!--<b>Land Degradation</b></br>
+							<div id="sliderLandDegradation"></div>
+							<div id="toggleLandDegradation" style="padding: 2px 2px;"></div></br>
+							<b>Landuse (Spatial Planning)</b></br>
+							<div id="sliderLanduseSpatialPlan"></div>
+							<div id="toggleLanduseSpatialPlan" style="padding: 2px 2px;"></div></br>
+							<b>Permit (Agriculture)</b></br>
+							<div id="sliderPermitAgriculture"></div>
+							<div id="togglePermitAgriculture" style="padding: 2px 2px;"></div></br>
+							<b>Permit (Mining)</b></br>
+							<div id="sliderMining"></div>
+							<div id="toggleMining" style="padding: 2px 2px;"></div></br>
+							<b>Permit (Forestry)</b></br>
+							<div id="sliderPermits"></div>
+							<div id="togglePermits" style="padding: 2px 2px;"></div></br>
+							<b>Socio Economic</b></br>
+							<div id="sliderSocioEconomic"></div>
+							<div id="toggleSocioEconomic" style="padding: 2px 2px;"></div></br>-->
+							<b>Soil</b></br>
+							<div id="sliderSoil"></div>
+							<div id="toggleSoil" style="padding: 2px 2px;"></div></br>
+							<b>Topography</b></br>
+							<div id="sliderTopograpy"></div>
+							Contour Line
+							<div id="toggleTopography" style="padding: 2px 2px;"></div></br>
+						</div>
+				</div>
+			</div>
+		</div>
+		
+		<!-- additional information pane -->
+		<div data-dojo-type="dijit/layout/ContentPane" id="shortDescriptionPane"
+			data-dojo-props="title:'Layer Description'">
+				<div id="shortDescriptionDiv" style="visibility=hidden;"></div>
+		</div>
+		
+		<!-- basemap pane -->
+		<div data-dojo-type="dijit/layout/ContentPane" id="basemapPane"
+			data-dojo-props="title:'Basemap'">
+				<div id="basemapGalleryDiv" style="width: 40%;"></div>
+		</div>
+		
+		<!-- tools pane -->
+		<div data-dojo-type="dijit/layout/ContentPane" id="toolsPane"
+			data-dojo-props="title:'Tools'">
+				<div id = "printButton"></div>
+				<div id="searchLayerData">
+					<div data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'top'" style="height:50px;">
+					  Layer data: <input type="text" id="findLayer" size="30" value="-----" />      
+						  <button id="search" data-dojo-type="dijit.form.Button" type="button" data-dojo-attach-point="button" >Search       
+						  </button>
+						  <button id="clearSelectionButton" data-dojo-type="dijit.form.Button" type="button" data-dojo-attach-point="button" >Clear search       
+						  </button>
+					</div>
+					<div data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'bottom'" style="height:150px;">
+					 <table data-dojo-type="dojox/grid/DataGrid" data-dojo-id="grid"  id="grid" data-dojo-props="rowsPerPage:'5', rowSelector:'20px'">
+					  <thead>
+						<tr>
+						  <th field="KABKOT">District</th>				  
+						  <th field="KECAMATAN">Sub District</th>
+						  <th field="DESA">Village</th>
+						</tr>
+					  </thead>
+					</table>
+					</div>
+				</div>
+				<div id = "measurementDiv"></div>				
+		</div>
+    </div>
+  </div>
+  
+  <div id="header" data-dojo-type="dijit/layout/ContentPane"
+       data-dojo-props="region:'top'"
+       style="overflow:hidden; background-image: url(./images/batik-tile.jpg);">
+	   <div id="logo"><img border="0" src="./images/logo-mca-indonesia-s.png" width="55px" height="50px" align="left"></div>
+	   <div id="header"><b>MILLENNIUM CHALLENGE ACCOUNT - INDONESIA</b></div>
+		<div id="subHeader">Reducing poverty through economic growth</div>
+  </div>
+  
+  <div id="map"
+       data-dojo-type="dijit/layout/ContentPane"
+       data-dojo-props="region:'center'"       
+	   >
+	   <!--<img id="loadingImg" src="./images/loading5.gif" style="position:absolute; right:512px; top:256px; z-index:100;" />-->
+	   
+		<div id="navToolbar" data-dojo-type="dijit/Toolbar">
+			<div data-dojo-type="dijit/form/Button" id="zoomin"  data-dojo-props="iconClass:'zoominIcon'">Zoom In</div>
+			<div data-dojo-type="dijit/form/Button" id="zoomout" data-dojo-props="iconClass:'zoomoutIcon'">Zoom Out</div>
+			<!--<div data-dojo-type="dijit/form/Button" id="zoomfullext" data-dojo-props="iconClass:'zoomfullextIcon'">Full Extent</div>-->
+			<div data-dojo-type="dijit/form/Button" id="zoomprev" data-dojo-props="iconClass:'zoomprevIcon'">Prev Extent</div>
+			<div data-dojo-type="dijit/form/Button" id="zoomnext" data-dojo-props="iconClass:'zoomnextIcon'">Next Extent</div>
+			<div data-dojo-type="dijit/form/Button" id="pan" data-dojo-props="iconClass:'panIcon'">Pan</div>
+			<!--<div data-dojo-type="dijit/form/Button" id="deactivate" data-dojo-props="iconClass:'deactivateIcon'">Deactivate</div>-->
+		</div>
+
+	   <div id="HomeButton"></div>
+	   	<div id="help" style="position:absolute; right:20px; top:13px; z-Index:998;">
+			<a target="_blank" href="./help/about.html">About</a> &nbsp <a target="_blank" href="./help/quickguide.html" >Quick Guide</a>
+		</div>
+	   <div style="position:absolute; left:20px; top:50px; z-Index:999;">
+          <div data-dojo-type="dijit/TitlePane" 
+               data-dojo-props="title:'Legend', closable:false,  open:false">
+            <div data-dojo-type="dijit/layout/ContentPane" style="width:200px; height:150px; overflow:auto;">
+            <div id="legendFlyDiv" style="visibility=hidden;">
+				<div id="legendDiv"></div>
+				<div id="legendAdministrativeDiv" style=""></div>
+				<div id="legendCarbonProjectDiv" style=""></div>
+				<div id="legendClimateDiv" style=""></div>
+				<!--<div id="legendEcologyDiv" style=""></div>-->
+				<div id="legendEnergyDiv" style=""></div>
+				<div id="legendForestryDiv" style=""></div>
+				<!--<div id="legendHazardVunerabillityDiv" style=""></div>
+				<div id="legendHotspotDiv" style=""></div>-->
+				<div id="legendHydrologyDiv" style=""></div>
+				<div id="legendInfrastructureDiv" style=""></div>
+				<div id="legendLandcoverDiv" style=""></div>
+				<div id="legendLandscapeDiv" style=""></div>
+				<div id="legendLandDegradationDiv" style=""></div>
+				<div id="legendLanduseSpatialPlanDiv" style=""></div>
+				<div id="legendPermitAgricultureDiv" style=""></div>
+				<div id="legendMiningDiv" style=""></div>
+				<div id="legendPermitsDiv" style=""></div>
+				<div id="legendSocioEconomicDiv" style=""></div>
+				<div id="legendSoilDiv" style=""></div>
+				<div id="legendTopographyDiv" style=""></div>				
+		   </div>
+          </div>
+        </div>
+	   
+  </div>  
+</div>
+</body>
+</html>

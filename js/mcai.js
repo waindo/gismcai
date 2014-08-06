@@ -17,7 +17,7 @@ var legendLandscapeSB = [], legendPermitAgricultureSB = [];
 var findTask, findParams;
 var iHidePane;
 
-var iAlamatLokal = "localhost";
+var iAlamatLokal = "202.78.203.23";
 var iMapServicesFolder = "http://" + iAlamatLokal + ":6080/arcgis/rest/services/data/";
 
 var iFeatureFolder = iMapServicesFolder + "indonesia4/MapServer/";
@@ -74,8 +74,10 @@ require([
 	"dojo/_base/Color",
 	"dojo/store/Memory",
 	"dojo/json",
+	'dojo/_base/xhr',
   
 	"dojo/text!./data/dtProvince.json",
+	"dojo/text!./data/dtLayers.json",
 	
 	"dijit/form/CheckBox",
 	"dijit/form/ComboBox",
@@ -109,8 +111,8 @@ require([
 			Extent, Navigation, FindTask, FindParameters, Print, PrintTemplate, esriRequest, esriConfig,
 		domConstruct, dom, on, parser, query, arrayUtils, connect, DataGrid, ItemFileReadStore, 
 		Toggler, coreFx,
-		Color, Memory, JSON, 
-		dtProvince, 
+		Color, Memory, JSON, xhr,
+		dtProvince, dtLayers,
 		CheckBox, ComboBox, RadioButton, Button, HorizontalSlider, 
 			AccordionContainer, BorderContainer, ContentPane, 
 			TitlePane, MenuBar, PopupMenuBarItem, Menu, MenuItem, DropDownMenu, TabContainer, Toolbar, registry,
@@ -193,17 +195,38 @@ require([
 			//}			
         });
 		
+		
+		//fLoadJsonData();
 	//------------------------
 	//-- all functions --
 	//------------------------
+	function fLoadJsonData() {
+		var data = JSON.parse(dtLayers);
+		var lyrsX9 = [];
+		var lgnX = [];
+		
+			for(var i=0; i < data.layers.length; i++) {
+				
+				lyrsX9[i] = new FeatureLayer(iFeatureFolderSulawesiBarat + data.layers[i].layerID, {id:'9'+data.layers[i].layerID});
+				lgnX.push({ layer: lyrsX9[i], title: data.layers[i].title});
+				
+				map.addLayer(lyrsX9[i]);
+				//lyrsX9[i].show();
+				//console.log(data.layers[i].layerID);
+				//console.log(data.layers[i].title);
+				//console.log(data.layers[i].legendName);
+			}
+			
+			
+		try {
+			
+		}catch (err) {
+			console.log(err.message);
+		}
+	}
 	function fUserEvent() {
 		on(dom.byId("HomeButton"), "click", fHomeButton);
 		
-		/*
-		on(dom.byId("radioProvince"), "click", fRadioProvince);
-		on(dom.byId("radioDistrict"), "click", fRadioDistrict);
-		on(dom.byId("radioLandscape"), "click", fRadioLandscape);
-		*/
 		on(dom.byId("provinceSelectLayer"), "click", fSelectProvinceLayer);
 		on(dom.byId("selectLayerButton"), "click", fSelectProvinceLayer);		
 		
@@ -231,10 +254,6 @@ require([
             navToolbar.activate(Navigation.ZOOM_OUT);
           });
 
-          //registry.byId("zoomfullext").on("click", function () {
-          //  navToolbar.zoomToFullExtent();
-          //});
-
           registry.byId("zoomprev").on("click", function () {
             navToolbar.zoomToPrevExtent();
           });
@@ -246,12 +265,6 @@ require([
           registry.byId("pan").on("click", function () {
             navToolbar.activate(Navigation.PAN);
           });
-
-		  /*
-          registry.byId("deactivate").on("click", function () {
-            navToolbar.deactivate();
-          });
-		  */
 	}
 	function fHidePanel() {
 		if (iHidePane) {
@@ -334,19 +347,20 @@ require([
     }   
 	function fSetPrinter() {
 			var printTitle = "MCA - Indonesia"
-			var printUrl = "http://sampleserver6.arcgisonline.com/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task";							   
-			esriConfig.defaults.io.proxyUrl = "/proxy";
+			//var printUrl "http://sampleserver6.arcgisonline.com/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task";							   
+			var printUrl = "http://202.78.203.23:6080/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task";
+			esriConfig.defaults.io.proxyUrl = "/proxy/proxy.ashx";
 			
-			
+			console.log("printing");
 			var layoutTemplate, templateNames, mapOnlyIndex, templates;
           
           // create an array of objects that will be used to create print templates
 			var layouts = [{
-				name: "Letter ANSI A Landscape", 
+				//name: "Letter ANSI A Landscape", 
 				label: "Landscape (PDF)", 
 				format: "pdf",             
 			}, {
-				name: "Letter ANSI A Portrait", 
+				//name: "Letter ANSI A Portrait", 
 				label: "Portrait (Image)", 
 				format: "jpg",             
 			}];
@@ -357,7 +371,7 @@ require([
 
 			var templates = arrayUtils.map(layouts, function(lo) {
             var t = new PrintTemplate();
-            t.layout = lo.name;
+            //t.layout = lo.name;
             t.label = lo.label;
             t.format = lo.format;
             t.layoutOptions = {
@@ -373,8 +387,9 @@ require([
 
 			printer = new Print({
 				map: map,
-				//templates: templates,
-				url: printUrl
+				templates: templates,
+				url: printUrl,
+				async: false
 			}, dom.byId("printButton"));
 			printer.startup();
 	}
@@ -408,13 +423,13 @@ require([
 		}, iSliderDivName);
 	}	
 	function fCreateLegend(iLegendName, iLegendDiv) {
-        map.on('layers-add-result', function () {
+		map.on('layers-add-result', function () {		
 		var legenda = new Legend({
-            map: map,
-            layerInfos: iLegendName
-          }, iLegendDiv);
-          legenda.startup();
-        });
+			map: map,
+			layerInfos: iLegendName
+		  }, iLegendDiv);
+		  legenda.startup();
+		});
     }
 	function fCreateCategoryGroup(iLegendName, iToggleName) {
         map.on('layers-add-result', function () {
@@ -2033,6 +2048,17 @@ require([
 		basemapGallery.startup();
 		//add custom basemap
 		var layer = new esri.dijit.BasemapLayer({
+				url: "http://services.arcgisonline.com/ArcGIS/rest/services/World_Shaded_Relief/MapServer"
+				//url:"http://" + iAlamatLokal + ":6080/arcgis/rest/services/mcai/mca_indonesia/MapServer/4"
+				//url:"http://services.arcgisonline.com/ArcGIS/services"
+			});
+			var basemap = new esri.dijit.Basemap({
+				layers:[layer],
+				title:"Default",
+				thumbnailUrl:"images/basebandNone.jpg"
+			});
+		basemapGallery.add(basemap);
+		var layer = new esri.dijit.BasemapLayer({				
 				url:"http://" + iAlamatLokal + ":6080/arcgis/rest/services/mcai/mca_indonesia/MapServer/4"
 				//url:"http://services.arcgisonline.com/ArcGIS/services"
 			});
@@ -2276,7 +2302,7 @@ require([
 		var comboBox = new ComboBox({
 			id: "provinceSelectLayer",
 			name: "provinceLayer",
-			placeHolder: "Select a Province",
+			placeHolder: "Select Province",
 			value: "Jambi",
 			store: provinceStoreZT,
 			searchAttr: "name"
@@ -2290,7 +2316,7 @@ require([
 		var comboBox = new ComboBox({
 			id: "provinceSelectZT",
 			name: "province",
-			placeHolder: "Select a Province",
+			placeHolder: "Select Province",
 			value: "-----",
 			store: provinceStoreZT,
 			searchAttr: "name"
@@ -2298,6 +2324,7 @@ require([
 		var comboBox = new ComboBox({
 			id: "districtSelectZT",
 			name: "district",
+			placeHolder: "Select District",
 			value: "-----",
 			store: districtStoreZT,
 			searchAttr: "name"
@@ -2305,6 +2332,7 @@ require([
 		var comboBox = new ComboBox({
 			id: "landscapeSelectZT",
 			name: "landscape",
+			placeHolder: "Select Landscape",
 			value: "-----",
 			store: landscapeStoreZT,
 			searchAttr: "name"
