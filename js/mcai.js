@@ -20,8 +20,8 @@ var iHidePane;
 var iAlamatLokal = "202.78.203.23";
 var iMapServicesFolder = "http://" + iAlamatLokal + ":6080/arcgis/rest/services/data/";
 
-var iFeatureFolder = iMapServicesFolder + "indonesia4/MapServer/";
-var iFeatureFolderSulawesiBarat = iMapServicesFolder + "indonesia6/MapServer/";
+var iFeatureFolder = iMapServicesFolder + "indonesia/MapServer/";
+var iFeatureFolderSulawesiBarat = iMapServicesFolder + "indonesia2/MapServer/";
 
 
 
@@ -55,19 +55,23 @@ require([
 	"esri/toolbars/navigation",
 	"esri/tasks/FindTask",
 	"esri/tasks/FindParameters",
-	
+	"esri/tasks/query",
+	"esri/tasks/QueryTask",
+
 	"esri/dijit/Print", "esri/tasks/PrintTemplate", 
 	"esri/request", "esri/config",
-	
-	"dojo/dom-construct",
+
+    "dojo/dom-construct",
 	"dojo/dom",      
 	"dojo/on",
 	"dojo/parser",      
 	"dojo/query",
 	"dojo/_base/array",
 	"dojo/_base/connect",
+	"dojo/_base/lang",
 	"dojox/grid/DataGrid",
     "dojo/data/ItemFileReadStore",
+	"dojo/data/ItemFileWriteStore",
 	
 	"dojo/fx/Toggler", "dojo/fx",
 	
@@ -78,7 +82,11 @@ require([
   
 	"dojo/text!./data/dtProvince.json",
 	"dojo/text!./data/dtLayers.json",
+
+	"dojox/widget/TitleGroup",
 	
+	"dijit/Dialog", 
+	"dijit/form/MultiSelect",
 	"dijit/form/CheckBox",
 	"dijit/form/ComboBox",
 	"dijit/form/RadioButton",
@@ -97,37 +105,38 @@ require([
 	"dijit/Toolbar",
 	"dijit/registry",
 	"esri/dijit/Measurement",
-	
+	"dijit/form/Textarea", 
   
-	"agsjs/dijit/TOC", 
+	//"agsjs/dijit/TOC", 
   
 	"dojo/fx", 
+	"dojo/on",
 	"dojo/domReady!"
 	],
 	function (
 		Map, utils, InfoTemplate, Legend, InfoWindowLite, HomeButton, Bookmarks, Scalebar, BasemapGallery,  
 			FeatureLayer, ArcGISTiledMapServiceLayer, ArcGISDynamicMapServiceLayer, ImageParameters,  LabelLayer, 
 			SimpleMarkerSymbol, SimpleLineSymbol, SimpleFillSymbol, TextSymbol, ClassBreaksRenderer, SimpleRenderer, 
-			Extent, Navigation, FindTask, FindParameters, Print, PrintTemplate, esriRequest, esriConfig,
-		domConstruct, dom, on, parser, query, arrayUtils, connect, DataGrid, ItemFileReadStore, 
+			Extent, Navigation, FindTask,  FindParameters, Query, QueryTask, Print, PrintTemplate, esriRequest, esriConfig,
+		domConstruct, dom, on, parser, query, arrayUtils, connect, lang, DataGrid, ItemFileReadStore, ItemFileWriteStore,
 		Toggler, coreFx,
 		Color, Memory, JSON, xhr,
 		dtProvince, dtLayers,
-		CheckBox, ComboBox, RadioButton, Button, HorizontalSlider, 
+		TitleGroup, 
+		Dialog, MultiSelect, CheckBox, ComboBox, RadioButton, Button, HorizontalSlider, 
 			AccordionContainer, BorderContainer, ContentPane, 
 			TitlePane, MenuBar, PopupMenuBarItem, Menu, MenuItem, DropDownMenu, TabContainer, Toolbar, registry,
-		Measurement,
-		TOC
+		Measurement, Textarea
+		//TOC
 	) {
 		var navToolbar;
-		var findTask, findParams;
+		var findTask, findParams, findTaskAD, findParamsAD ;
 		var map, center, zoom;
         var grid, store;
 		iHidePane = true;
 		
 		parser.parse();
 		
-		//esriConfig.defaults.io.proxyUrl = "/mcai_dev/proxy";
 		loading = dojo.byId("loadingImg");
 		
 		map = new Map("map", {
@@ -139,6 +148,10 @@ require([
 			sliderPosition: "top-right",
 			sliderStyle: "large"
 		});
+		
+		var printUrl = "http://202.78.203.23:6080/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export Web Map Task/execute";
+        esriConfig.defaults.io.proxyUrl = "/proxy";
+		
 		//hide the default basemap 
 		var basemap = map.getLayer(map.layerIds[0]);
 		basemap.hide();
@@ -172,10 +185,12 @@ require([
 		fLoadAreaList();
 		fLoadZoomTo();
 		
+		fLoadLayerNameAD();
+		
 		togglerJambiArea.show();
 		togglerSulawesiBaratArea.hide();
 		
-		fUserEvent()
+		fUserEvent();
 		
 		//create find task with url to map service
 		findTask = new FindTask(iFeatureFolder);
@@ -194,6 +209,72 @@ require([
 				//console.log("find sr: ", findParams.outSpatialReference);
 			//}			
         });
+	    
+		//create find advanced search
+		var select = registry.byId('ADLayerName');
+		var queryTaskS;
+		var isi;
+		
+		select.on('change', function(evt) {
+			//executeAD();
+			//doFindAD();
+			
+			var iSelectProvince;
+			var idLayer;
+			var iFoldernya;
+			
+			isi = dom.byId("ADLayerName").value;
+			iSelectProvince = dijit.byId("provinceSelectLayer").get("value").trim();
+			findParamsAD = new FindParameters();
+			findParamsAD.returnGeometry = true;
+			
+			if (iSelectProvince=='Jambi'){
+				iFoldernya = iFeatureFolder;
+			}
+			else {
+				iFoldernya = iFeatureFolderSulawesiBarat;
+			}
+			
+			findTaskAD = new FindTask(iFoldernya);
+			
+			switch (isi) {
+				case 'District':
+					queryTaskS= new QueryTask(iFoldernya + "9");
+					findParamsAD.layerIds = [9];
+
+					break;
+				case 'Sub District':
+					queryTaskS= new QueryTask(iFoldernya + "10");
+					findParamsAD.layerIds = [10];
+					break;
+				case 'Village':
+					queryTaskS= new QueryTask(iFoldernya + "11");
+					findParamsAD.layerIds = [11];
+					break;
+				case 'RE Microhydro':
+					if (iSelectProvince=='Jambi'){
+						queryTaskS= new QueryTask(iFoldernya + "18");
+						findParamsAD.layerIds = [18];
+					}
+					else {
+						queryTaskS= new QueryTask(iFoldernya + "31");
+						findParamsAD.layerIds = [31];
+					}		
+					break;
+				case 'Forest Status':
+					if (iSelectProvince=='Jambi'){
+						queryTaskS= new QueryTask(iFoldernya + "22");
+						findParamsAD.layerIds = [22];
+					}
+					else {
+						queryTaskS= new QueryTask(iFoldernya + "36");
+						findParamsAD.layerIds = [36];
+					}		
+					break;
+			}
+						
+			executeAD();
+		});
 		
 		
 		//fLoadJsonData();
@@ -224,6 +305,77 @@ require([
 			console.log(err.message);
 		}
 	}
+	function fCheckLayerNameAD () {
+		var isi;
+		var iSelectProvince;
+		var idLayer;
+		var iFoldernya;
+		
+		isi = dom.byId("ADLayerName").value;
+		iSelectProvince = dijit.byId("provinceSelectLayer").get("value").trim();
+		if (iSelectProvince=='Jambi'){
+			iFoldernya = iFeatureFolder;
+		}
+		else {
+			iFoldernya = iFeatureFolderSulawesiBarat;
+		}
+		switch (isi) {
+			case '-----':
+				break;
+			case 'District':
+				queryTaskS= new QueryTask(iFoldernya + "9");
+
+				break;
+			case 'Sub District':
+				queryTaskS= new QueryTask(iFoldernya + "10");
+				break;
+			case 'Village':
+				queryTaskS= new QueryTask(iFoldernya + "11");
+				break;
+			case 'RE Microhydro':
+				if (iSelectProvince=='Jambi'){
+					iFoldernya = iFeatureFolder;
+				}
+				else {
+					iFoldernya = iFeatureFolderSulawesiBarat;
+				}		
+				break;
+			case 'Forest Status':
+				
+				break;
+		}
+		
+	}
+	function fCheckLayerFieldAD() {
+		 dom.byId("ADLayerValue").value = dom.byId("ADLayerValue").value + dom.byId("ADLayerField").value;
+	}
+	function fBtn1() {
+		dom.byId("ADLayerValue").value = dom.byId("ADLayerValue").value + ' = ';
+	}
+	function fBtn2() {
+		dom.byId("ADLayerValue").value = dom.byId("ADLayerValue").value + ' > ';
+	}
+	function fBtn3() {
+		dom.byId("ADLayerValue").value = dom.byId("ADLayerValue").value + ' < ';
+	}
+	function fBtn4() {
+		dom.byId("ADLayerValue").value = dom.byId("ADLayerValue").value + ' <> ';
+	}
+	function fBtn5() {
+		dom.byId("ADLayerValue").value = dom.byId("ADLayerValue").value + ' >= ';
+	}
+	function fBtn6() {
+		dom.byId("ADLayerValue").value = dom.byId("ADLayerValue").value + ' <= ';
+	}
+	function fBtn7() {
+		dom.byId("ADLayerValue").value = dom.byId("ADLayerValue").value + ' Like ';
+	}
+	function fBtn8() {
+		dom.byId("ADLayerValue").value = dom.byId("ADLayerValue").value + ' And ';
+	}
+	function fBtn9() {
+		dom.byId("ADLayerValue").value = dom.byId("ADLayerValue").value + ' Or ';
+	}
 	function fUserEvent() {
 		on(dom.byId("HomeButton"), "click", fHomeButton);
 		
@@ -236,13 +388,43 @@ require([
 		
 		//on(dom.byId("processButton"), "click", fProcess);
 		on(dom.byId("zoomToButton"), "click", fZoomTo);		
-		on(dom.byId("closePane"), "click", fHidePane);		
+		//on(dom.byId("closePane"), "click", fHidePane);		
+		on(dom.byId("btnOpen"), "click", fHidePane);		
+		on(dom.byId("btnClose"), "click", fHidePane);
 		
+		on(dom.byId("btn1"), "click", fBtn1);
+		on(dom.byId("btn2"), "click", fBtn2);
+		on(dom.byId("btn3"), "click", fBtn3);
+		on(dom.byId("btn4"), "click", fBtn4);
+		on(dom.byId("btn5"), "click", fBtn5);
+		on(dom.byId("btn6"), "click", fBtn6);
+		on(dom.byId("btn7"), "click", fBtn7);
+		on(dom.byId("btn8"), "click", fBtn8);
+		on(dom.byId("btn9"), "click", fBtn9);
+		
+		//multiselect advaced search onClick
+		on(dom.byId("ADLayerField"), "click", fCheckLayerFieldAD);
+		
+		//basic search layer
 		on(dom.byId("clearSelectionButton"), "click", function () {
 			dom.byId("findLayer").value="-----";
 			doFind();
         });
 		registry.byId("search").on("click", doFind);
+		
+		//advanced search layer
+		on(dom.byId("ADClearSelectionButton"), "click", function () {
+			dom.byId("ADLayerName").value="-----";
+			dom.byId("ADLayerValue").value="";
+			
+			var resultItems = [];
+			resultItems=["<option></option>"];
+			dom.byId("ADLayerField").innerHTML = resultItems.join("");
+			
+			doFindAD();
+        });
+		registry.byId("ADSearch").on("click", doFindAD);
+		
 		navToolbar = new Navigation(map);
           on(navToolbar, "onExtentHistoryChange", extentHistoryChangeHandler);
 
@@ -275,7 +457,7 @@ require([
 			toggler.show();
 			iHidePane=true;
 		}
-		console.log(iHidePane);
+		//console.log(iHidePane);
 	}	
 	function fHidePane() {
 		var leftPanel = registry.byId('rightPane');
@@ -289,12 +471,24 @@ require([
 				iHidePane = true;
 			}			
 		}
-	}	
+		//console.log(iHidePane);
+	}
+	
+	//basic search layer
 	function doFind() {
+	
           //Set the search text to the value in the box
           findParams.searchText = dom.byId("findLayer").value;
           findTask.execute(findParams, showResults); 
 	}	
+	function executeAD() {
+		var queryS = new Query();
+        queryS.returnGeometry = false;
+        queryS.outFields = ["*"];
+        queryS.text = "A";
+		queryS.where = "OBJECTID > 0"
+        queryTaskS.execute(queryS, showResultsAD);
+    }
 	function showResults(results) {
           //This function works with an array of FindResult that the task returns
           map.graphics.clear();
@@ -313,9 +507,10 @@ require([
           });
 
           //Create data object to be used in store
-          var data = {
+          var data;
+			data = {
             identifier : "DESA", //This field needs to have unique values
-            label : "DESA", //Name field for display. Not pertinent to a grid but may be used elsewhere.
+            label : "*", //Name field for display. Not pertinent to a grid but may be used elsewhere.
             items : items
           };
 
@@ -330,6 +525,163 @@ require([
           //Zoom back to the initial map extent
           map.centerAndZoom(center, zoom);
 	}	
+	function showResultsAD(results) {
+		var resultItems = [];
+		var resultCount = results.features.length;
+		//console.log (resultCount);
+		if (resultCount > 0) {
+			var featureAttributes = results.features[1].attributes;
+			for (var attr in featureAttributes) {
+			  //resultItems.push("<b>" + attr + ":</b>  " + featureAttributes[attr] + "<br>");
+			  resultItems.push("<option>" + attr + "</option>");
+			}
+		} 
+		if (isi == "-----") {
+			resultItems=["<option></option>"];
+		}
+		dom.byId("ADLayerField").innerHTML = resultItems.join("");
+	}
+	
+	//advanced search layer
+	function doFindAD() {
+		//Set the search text to the value in the box
+		switch (isi) {
+				case 'District':
+					findParamsAD.searchFields = ["DISTRICT"];
+					break;
+				case 'Sub District':
+					findParamsAD.searchFields = ["KECAMATAN"];
+					break;
+				case 'Village':
+					findParamsAD.searchFields = ["DESA"];
+					break;
+				case 'RE Microhydro':
+					if (iSelectProvince=='Jambi'){
+						findParamsAD.searchFields = ["*"];
+					}
+					else {
+						findParamsAD.searchFields = ["*"];
+					}		
+					break;
+				case 'Forest Status':
+					if (iSelectProvince=='Jambi'){
+						findParamsAD.searchFields = ["*"];
+					}
+					else {
+						findParamsAD.searchFields = ["*"];
+					}		
+					break;
+			}
+		findParamsAD.outSpatialReference = map.spatialReference;
+		//findParamsAD.searchText = dom.byId("ADLayerValue").value;
+		//findParamsAD.where = dom.byId("ADLayerValue").value;
+		findParamsAD.layerDefinitions[11] = dom.byId("ADLayerValue").value;
+		findTaskAD.execute(findParamsAD, showResultsADs); 
+	}	
+	function showResultsADs(results) {
+          //This function works with an array of FindResult that the task returns
+          map.graphics.clear();
+          var symbol = new SimpleFillSymbol(
+            SimpleFillSymbol.STYLE_SOLID, 
+            new SimpleLineSymbol(SimpleLineSymbol.STYLE_SOLID, new Color([98, 194, 204]), 2), 
+            new Color([98, 194, 204, 0.5])
+          );
+
+          //create array of attributes
+          var items = arrayUtils.map(results, function (result) {
+            var graphic = result.feature;
+            graphic.setSymbol(symbol);
+            map.graphics.add(graphic);
+            return result.feature.attributes;
+          });
+
+          //Create data object to be used in store
+          var data; 
+			
+          /*set up layout*/
+			var layout;
+			
+			switch (isi) {
+				case 'District':
+					layout = [[
+					  {'name': 'DISTRICT', 'field': 'DISTRICT', 'width': '100px'}					  
+					]];
+					
+					data= {
+						identifier : "DISTRICT", //This field needs to have unique values
+						label : "DISTRICT", //Name field for display. Not pertinent to a grid but may be used elsewhere.
+						items : items
+					};
+					break;
+				case 'Sub District':
+					layout = [[
+					  {'name': 'KABKOT', 'field': 'KABKOT', 'width': '100px'},
+					  {'name': 'KECAMATAN', 'field': 'KECAMATAN', 'width': '100px'}
+					]];
+					
+					data= {
+						identifier : "KECAMATAN", //This field needs to have unique values
+						label : "KECAMATAN", //Name field for display. Not pertinent to a grid but may be used elsewhere.
+						items : items
+					};
+					break;
+				case 'Village':
+					layout = [[
+					  {'name': 'KABKOT', 'field': 'KABKOT', 'width': '100px'},
+					  {'name': 'KECAMATAN', 'field': 'KECAMATAN', 'width': '100px'},
+					  {'name': 'DESA', 'field': 'KECAMATAN', 'width': '100px'}
+					]];
+					
+					data= {
+						identifier : "DESA", //This field needs to have unique values
+						label : "DESA", //Name field for display. Not pertinent to a grid but may be used elsewhere.
+						items : items
+					};
+					break;
+				case 'RE Microhydro':
+					if (iSelectProvince=='Jambi'){
+
+					}
+					else {
+
+					}		
+					break;
+				case 'Forest Status':
+					if (iSelectProvince=='Jambi'){
+
+					}
+					else {
+
+					}		
+					break;
+			}
+			
+			//Create data store and bind to grid.
+			store = new ItemFileReadStore({
+			  data : data
+			});
+			
+			var grid = new DataGrid({
+			id: 'gridSS',
+			store: store,
+			structure: layout,
+			rowSelector: '20px'});
+
+			/*append the new grid to the div*/
+			gridSS.placeAt("gridDiv");
+
+			/*Call startup() to render the grid*/
+			gridSS.startup();
+			
+		  /* var grid = registry.byId("gridDiv");
+          grid.setStore(store);
+		  grid.setStructure(layout);
+          grid.on("rowclick", onRowClickHandler); */
+
+          //Zoom back to the initial map extent
+          map.centerAndZoom(center, zoom);
+	}
+	
 	//Zoom to the parcel when the user clicks a row
 	function onRowClickHandler(evt) {
 	  var clickedTaxLotId = evt.grid.getItem(evt.rowIndex).DESA;
@@ -339,7 +691,8 @@ require([
 	  if ( selectedTaxLot.length ) {
 		map.setExtent(selectedTaxLot[0].geometry.getExtent(), true);
 	  }
-	}		
+	}
+	
 	//----- only for fix/reusable code/function -----
 	function extentHistoryChangeHandler () {
         registry.byId("zoomprev").disabled = navToolbar.isFirstExtent();
@@ -347,51 +700,73 @@ require([
     }   
 	function fSetPrinter() {
 			var printTitle = "MCA - Indonesia"
-			//var printUrl "http://sampleserver6.arcgisonline.com/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task";							   
-			var printUrl = "http://202.78.203.23:6080/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task";
-			esriConfig.defaults.io.proxyUrl = "/proxy/proxy.ashx";
+			//var printUrl = "http://sampleserver6.arcgisonline.com/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20	
+			//var printUrl = "http://202.78.203.23:6080/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task";
+			//var printUrl = "http://" + iAlamatLokal + ":6080/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task";
+			//esriConfig.defaults.io.proxyUrl = "/proxy";
 			
-			console.log("printing");
+			//console.log (printUrl);
+			
+			//console.log("printing");
 			var layoutTemplate, templateNames, mapOnlyIndex, templates;
           
           // create an array of objects that will be used to create print templates
 			var layouts = [{
-				//name: "Letter ANSI A Landscape", 
+				name: "A4 Landscape", 
 				label: "Landscape (PDF)", 
-				format: "pdf",             
+				format: "pdf",
+				options:  { 
+					legendLayers: [],
+					scaleBarUnit: "Kilometers",
+					titleText: printTitle + ", Landscape JPG"
+				}
 			}, {
-				//name: "Letter ANSI A Portrait", 
-				label: "Portrait (Image)", 
-				format: "jpg",             
+				name: "A4 Landscape", 
+				label: "Landscape (Image)", 
+				format: "jpg",
+				options:  { 
+					legendLayers: [],
+					scaleBarUnit: "Kilometers",
+					titleText: printTitle + ", Landscape JPG"
+				}
 			}];
           
           // create the print templates
-			var legendLayer = new esri.tasks.LegendLayer();
-			legendLayer.layerId = "defaultBasemap";
-
+			//var legendLayer = new esri.tasks.LegendLayer();
+			//legendLayer.layerId = "defaultBasemap";
 			var templates = arrayUtils.map(layouts, function(lo) {
-            var t = new PrintTemplate();
-            //t.layout = lo.name;
-            t.label = lo.label;
-            t.format = lo.format;
-            t.layoutOptions = {
-				"authorText": "Made by:  MCA - Indonesia",
-				"copyrightText": "Copyright: MCA - Indonesia 2014",
-				//"legendLayers": layerIds , 
-				"titleText": printTitle, 
-				"scalebarUnit": "Kilometers" 
-			}
-			
-            return t;
-          });
-
+				var t = new PrintTemplate();
+				t.layout = lo.name;
+				t.label = lo.label;
+				t.format = lo.format;
+				t.layoutOptions = lo.options;
+				return t;
+				});
+			/*
+			var templates = arrayUtils.map(layouts, function(lo) {
+				var t = new PrintTemplate();
+				t.layout = lo.name;
+				t.label = lo.label;
+				t.format = lo.format;
+				t.layoutOptions = {
+					"authorText": "Made by:  MCA - Indonesia",
+					"copyrightText": "Copyright: MCA - Indonesia 2014",
+					//"legendLayers": layerIds , 
+					"titleText": printTitle, 
+					"scalebarUnit": "Kilometers" 
+				}
+				
+				return t;
+			});
+			*/
 			printer = new Print({
 				map: map,
 				templates: templates,
-				url: printUrl,
-				async: false
+				url: printUrl
+				//async: false
 			}, dom.byId("printButton"));
 			printer.startup();
+			
 	}
 	function fShowLoading() {
 	  esri.show(loading);
@@ -567,7 +942,7 @@ require([
 					}					
 					break;
 			}
-			console.log(result);
+			//console.log(result);
 			return result
 
 		}
@@ -680,8 +1055,9 @@ require([
         
 		map.addLayers([
 			//----- polygon layers group -----
-			SBindonesiaBackgroundLayer, 
-			SBindonesiaLayer, SBmcaiGP, SBmcaiH, SBmcaiPM,
+			//SBindonesiaBackgroundLayer, 
+			//SBindonesiaLayer, 
+			SBmcaiGP, SBmcaiH, SBmcaiPM,
 			
 			SBlyr7, SBlyr8, SBlyr9, SBlyr10, SBlyr11, 
 			
@@ -707,7 +1083,7 @@ require([
 		]);
 		
 		
-		console.log("load sulewesi barat service layer success");
+		//console.log("load sulewesi barat service layer success");
 	}
 	function fCreateLabelLayersSB(iLabelField, iIdField, iLayerURL ) {
 	    var labelField = iLabelField;
@@ -876,7 +1252,7 @@ require([
 					}					
 					break;
 			}
-			console.log(result);
+			//console.log(result);
 			return result
 
 		}
@@ -1172,7 +1548,8 @@ require([
 		map.addLayers([
 			//----- jambi layer -----
 			indonesiaBackgroundLayer, 
-			indonesiaLayer, mcaiGP, mcaiH, mcaiPM,
+			indonesiaLayer, 
+			mcaiGP, mcaiH, mcaiPM,
 			
 			lyr7, lyr8, lyr9, lyr10, lyr11, lyr12,
 			
@@ -1223,7 +1600,7 @@ require([
 		]);
 		
 		
-		console.log("load service layer success");
+		//console.log("load service layer success");
 	}
     function fCreateLabelLayers(iLabelField, iIdField, iLayerURL ) {
 	    var labelField = iLabelField;
@@ -2058,6 +2435,7 @@ require([
 				thumbnailUrl:"images/basebandNone.jpg"
 			});
 		basemapGallery.add(basemap);
+		/*
 		var layer = new esri.dijit.BasemapLayer({				
 				url:"http://" + iAlamatLokal + ":6080/arcgis/rest/services/mcai/mca_indonesia/MapServer/4"
 				//url:"http://services.arcgisonline.com/ArcGIS/services"
@@ -2068,6 +2446,7 @@ require([
 				thumbnailUrl:"images/basebandNone.jpg"
 			});
 		basemapGallery.add(basemap);
+		*/
 		
 		//add measurement widget
 			var measurement = new Measurement({
@@ -2344,7 +2723,26 @@ require([
 		fComboDisableZT();
 		dijit.byId("provinceSelectZT").attr("disabled", false);
 	}
+	function fLoadLayerNameAD() {
+		var layerNameAD = new Memory({
+			data: [
+				{name:"-----", id:"9"},
+				{name:"District", id:"9"},
+				{name:"Sub District", id:"10"},
+				{name:"Village", id:"11"},
+				{name:"RE Microhydro", id:"12"},
+				{name:"Forest Status", id:"13"}
+			]
+		});
 		
+		var comboBox = new ComboBox({
+			id: "ADLayerName",
+			name: "LayerNameAD",
+			value: "-----",
+			store: layerNameAD,
+			searchAttr: "name"
+		}, "ADLayerName");
+	}	
 	function fProcess() {
 		var iArea, iSelectArea, iSelectAnalysis;
 				
