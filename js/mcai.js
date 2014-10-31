@@ -1,14 +1,29 @@
 var app = {}, map, toc, dynaLayer1, dynaLayer2, featLayer1;
+
 var legendAgriculture = [], legendCarbonProject = [], legendClimate = [], legendEcology = [], legendEnergy = [];
 var legendForestry = [], legendHazardVunerabillity = [], legendHotspot = [], legendHydrology = [];
 var legendInfrastructure = [], legendLandcover = [], legendLandDegradation = [], legendMining = [];
 var legendPermits = [], legendLanduseSpatialPlan = [], legendSocioEconomic = [], legendSoil = [];
 var legendLayers = [], legendTopography = [], legendRainFalls = [], legendAdministrative = [];
-var legendLandscape = [];
+var legendLandscape = [], legendPermitAgriculture = [];
 
-var iAlamatLokal = "localhost";
+var legendAgricultureSB = [], legendCarbonProjectSB = [], legendClimateSB = [], legendEcologySB = [], legendEnergySB = [];
+var legendForestrySB = [], legendHazardVunerabillitySB = [], legendHotspotSB = [], legendHydrologySB = [];
+var legendInfrastructureSB = [], legendLandcoverSB = [], legendLandDegradationSB = [], legendMiningSB = [];
+var legendPermitsSB = [], legendLanduseSpatialPlanSB = [], legendSocioEconomicSB = [], legendSoilSB = [];
+var legendLayersSB = [], legendTopographySB = [], legendRainFallsSB = [], legendAdministrativeSB = [];
+var legendLandscapeSB = [], legendPermitAgricultureSB = [];
+
+var findTask, findParams;
+var iHidePane;
+
+var iAlamatLokal = "202.78.203.23";
 var iMapServicesFolder = "http://" + iAlamatLokal + ":6080/arcgis/rest/services/data/";
-var iFeatureFolder = iMapServicesFolder + "indonesia3/MapServer/";
+
+var iFeatureFolder = iMapServicesFolder + "indonesia/MapServer/";
+var iFeatureFolderSulawesiBarat = iMapServicesFolder + "indonesia2/MapServer/";
+
+
 
 require([
 	"esri/map",
@@ -27,7 +42,8 @@ require([
 	"esri/layers/ArcGISDynamicMapServiceLayer",
 	"esri/layers/ImageParameters",
 	"esri/layers/LabelLayer",
-  
+	
+	"esri/symbols/SimpleMarkerSymbol",
     "esri/symbols/SimpleLineSymbol",
     "esri/symbols/SimpleFillSymbol",
 	"esri/symbols/TextSymbol",
@@ -37,20 +53,40 @@ require([
 	
 	"esri/geometry/Extent", 
 	"esri/toolbars/navigation",
-	
+	"esri/tasks/FindTask",
+	"esri/tasks/FindParameters",
+	"esri/tasks/query",
+	"esri/tasks/QueryTask",
+
 	"esri/dijit/Print", "esri/tasks/PrintTemplate", 
 	"esri/request", "esri/config",
-	
-	"dojo/dom-construct",
+
+    "dojo/dom-construct",
 	"dojo/dom",      
 	"dojo/on",
 	"dojo/parser",      
 	"dojo/query",
 	"dojo/_base/array",
 	"dojo/_base/connect",
+	"dojo/_base/lang",
+	"dojox/grid/DataGrid",
+    "dojo/data/ItemFileReadStore",
+	"dojo/data/ItemFileWriteStore",
+	
+	"dojo/fx/Toggler", "dojo/fx",
+	
 	"dojo/_base/Color",
 	"dojo/store/Memory",
+	"dojo/json",
+	'dojo/_base/xhr',
   
+	"dojo/text!./data/dtProvince.json",
+	"dojo/text!./data/dtLayers.json",
+
+	"dojox/widget/TitleGroup",
+	
+	"dijit/Dialog", 
+	"dijit/form/MultiSelect",
 	"dijit/form/CheckBox",
 	"dijit/form/ComboBox",
 	"dijit/form/RadioButton",
@@ -69,29 +105,38 @@ require([
 	"dijit/Toolbar",
 	"dijit/registry",
 	"esri/dijit/Measurement",
-	
+	"dijit/form/Textarea", 
   
-	"agsjs/dijit/TOC", 
+	//"agsjs/dijit/TOC", 
   
 	"dojo/fx", 
+	"dojo/on",
 	"dojo/domReady!"
 	],
 	function (
 		Map, utils, InfoTemplate, Legend, InfoWindowLite, HomeButton, Bookmarks, Scalebar, BasemapGallery,  
 			FeatureLayer, ArcGISTiledMapServiceLayer, ArcGISDynamicMapServiceLayer, ImageParameters,  LabelLayer, 
-			SimpleLineSymbol, SimpleFillSymbol, TextSymbol, ClassBreaksRenderer, SimpleRenderer, 
-			Extent, Navigation, Print, PrintTemplate, esriRequest, esriConfig,
-		domConstruct, dom, on, parser, query, arrayUtils, connect, Color, Memory, 
-		CheckBox, ComboBox, RadioButton, Button, HorizontalSlider, 
+			SimpleMarkerSymbol, SimpleLineSymbol, SimpleFillSymbol, TextSymbol, ClassBreaksRenderer, SimpleRenderer, 
+			Extent, Navigation, FindTask,  FindParameters, Query, QueryTask, Print, PrintTemplate, esriRequest, esriConfig,
+		domConstruct, dom, on, parser, query, arrayUtils, connect, lang, DataGrid, ItemFileReadStore, ItemFileWriteStore,
+		Toggler, coreFx,
+		Color, Memory, JSON, xhr,
+		dtProvince, dtLayers,
+		TitleGroup, 
+		Dialog, MultiSelect, CheckBox, ComboBox, RadioButton, Button, HorizontalSlider, 
 			AccordionContainer, BorderContainer, ContentPane, 
 			TitlePane, MenuBar, PopupMenuBarItem, Menu, MenuItem, DropDownMenu, TabContainer, Toolbar, registry,
-		Measurement,
-		TOC
+		Measurement, Textarea
+		//TOC
 	) {
-		parser.parse();
 		var navToolbar;
-
-		esriConfig.defaults.io.proxyUrl = "/mcai_dev/proxy";
+		var findTask, findParams, findTaskAD, findParamsAD ;
+		var map, center, zoom;
+        var grid, store;
+		iHidePane = true;
+		
+		parser.parse();
+		
 		loading = dojo.byId("loadingImg");
 		
 		map = new Map("map", {
@@ -103,44 +148,282 @@ require([
 			sliderPosition: "top-right",
 			sliderStyle: "large"
 		});
+		
+		var printUrl = "http://202.78.203.23:6080/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export Web Map Task/execute";
+        esriConfig.defaults.io.proxyUrl = "/proxy";
+		
 		//hide the default basemap 
-		//var basemap = map.getLayer(map.layerIds[0]);
-		//basemap.hide();
+		var basemap = map.getLayer(map.layerIds[0]);
+		basemap.hide();
 		
 		//set for loading gif
 		
 		//dojo.connect(map, "onUpdateStart", fShowLoading);
         //dojo.connect(map, "onUpdateEnd", fHideLoading);
 		
+        dojo.connect(map, "onUpdateEnd", fCheckLegendDivAll);
 		
   
+		//fLoadTOC();
+	
+		//load jambi
 		fLoadAllLayers();
-		fAddLabelLayers();
-		fHideAllFeatureLayers();	
-		fSetLegend();		
+		fHideAllFeatureLayers();
+		fSetLegend();
 		fKosongDiv();
 		fAddCategoryGroup();
+
+		//load sulawesi barat
+		fLoadAllLayersSB();
+		fHideAllFeatureLayersSB();
+		fSetLegendSB();
+		fKosongDivSB();
+		fAddCategoryGroupSB();		
 		
 		fLoadWidgets();
 		fSetPrinter();
 		fLoadAreaList();
 		fLoadZoomTo();
+		
+		fLoadLayerNameAD();
+		
+		togglerJambiArea.show();
+		togglerSulawesiBaratArea.hide();
+		
+		fUserEvent();
+		
+		//create find task with url to map service
+		findTask = new FindTask(iFeatureFolder);
+        		
+		map.on("load", function () {
+			//console.log( map.getLayer(12).visible);
+			//if (map.getLayer(12).visible) {
+				var iLayerIDActive, iLayerFieldActive
+				
+				//Create the find parameters
+				findParams = new FindParameters();
+				findParams.returnGeometry = true;
+				findParams.layerIds = [11];
+				findParams.searchFields = ["DESA"];
+				findParams.outSpatialReference = map.spatialReference;
+				//console.log("find sr: ", findParams.outSpatialReference);
+			//}			
+        });
+	    
+		//create find advanced search
+		var select = registry.byId('ADLayerName');
+		var queryTaskS;
+		var isi;
+		
+		select.on('change', function(evt) {
+			//executeAD();
+			//doFindAD();
+			
+			var iSelectProvince;
+			var idLayer;
+			var iFoldernya;
+			
+			isi = dom.byId("ADLayerName").value;
+			iSelectProvince = dijit.byId("provinceSelectLayer").get("value").trim();
+			findParamsAD = new FindParameters();
+			findParamsAD.returnGeometry = true;
+			
+			if (iSelectProvince=='Jambi'){
+				iFoldernya = iFeatureFolder;
+			}
+			else {
+				iFoldernya = iFeatureFolderSulawesiBarat;
+			}
+			
+			findTaskAD = new FindTask(iFoldernya);
+			
+			switch (isi) {
+				case 'District':
+					queryTaskS= new QueryTask(iFoldernya + "9");
+					findParamsAD.layerIds = [9];
 
-		//event when user content pane
+					break;
+				case 'Sub District':
+					queryTaskS= new QueryTask(iFoldernya + "10");
+					findParamsAD.layerIds = [10];
+					break;
+				case 'Village':
+					queryTaskS= new QueryTask(iFoldernya + "11");
+					findParamsAD.layerIds = [11];
+					break;
+				case 'RE Microhydro':
+					if (iSelectProvince=='Jambi'){
+						queryTaskS= new QueryTask(iFoldernya + "18");
+						findParamsAD.layerIds = [18];
+					}
+					else {
+						queryTaskS= new QueryTask(iFoldernya + "31");
+						findParamsAD.layerIds = [31];
+					}		
+					break;
+				case 'Forest Status':
+					if (iSelectProvince=='Jambi'){
+						queryTaskS= new QueryTask(iFoldernya + "22");
+						findParamsAD.layerIds = [22];
+					}
+					else {
+						queryTaskS= new QueryTask(iFoldernya + "36");
+						findParamsAD.layerIds = [36];
+					}		
+					break;
+			}
+						
+			executeAD();
+		});
+		
+		
+		//fLoadJsonData();
+	//------------------------
+	//-- all functions --
+	//------------------------
+	function fLoadJsonData() {
+		var data = JSON.parse(dtLayers);
+		var lyrsX9 = [];
+		var lgnX = [];
+		
+			for(var i=0; i < data.layers.length; i++) {
+				
+				lyrsX9[i] = new FeatureLayer(iFeatureFolderSulawesiBarat + data.layers[i].layerID, {id:'9'+data.layers[i].layerID});
+				lgnX.push({ layer: lyrsX9[i], title: data.layers[i].title});
+				
+				map.addLayer(lyrsX9[i]);
+				//lyrsX9[i].show();
+				//console.log(data.layers[i].layerID);
+				//console.log(data.layers[i].title);
+				//console.log(data.layers[i].legendName);
+			}
+			
+			
+		try {
+			
+		}catch (err) {
+			console.log(err.message);
+		}
+	}
+	function fCheckLayerNameAD () {
+		var isi;
+		var iSelectProvince;
+		var idLayer;
+		var iFoldernya;
+		
+		isi = dom.byId("ADLayerName").value;
+		iSelectProvince = dijit.byId("provinceSelectLayer").get("value").trim();
+		if (iSelectProvince=='Jambi'){
+			iFoldernya = iFeatureFolder;
+		}
+		else {
+			iFoldernya = iFeatureFolderSulawesiBarat;
+		}
+		switch (isi) {
+			case '-----':
+				break;
+			case 'District':
+				queryTaskS= new QueryTask(iFoldernya + "9");
+
+				break;
+			case 'Sub District':
+				queryTaskS= new QueryTask(iFoldernya + "10");
+				break;
+			case 'Village':
+				queryTaskS= new QueryTask(iFoldernya + "11");
+				break;
+			case 'RE Microhydro':
+				if (iSelectProvince=='Jambi'){
+					iFoldernya = iFeatureFolder;
+				}
+				else {
+					iFoldernya = iFeatureFolderSulawesiBarat;
+				}		
+				break;
+			case 'Forest Status':
+				
+				break;
+		}
+		
+	}
+	function fCheckLayerFieldAD() {
+		 dom.byId("ADLayerValue").value = dom.byId("ADLayerValue").value + dom.byId("ADLayerField").value;
+	}
+	function fBtn1() {
+		dom.byId("ADLayerValue").value = dom.byId("ADLayerValue").value + ' = ';
+	}
+	function fBtn2() {
+		dom.byId("ADLayerValue").value = dom.byId("ADLayerValue").value + ' > ';
+	}
+	function fBtn3() {
+		dom.byId("ADLayerValue").value = dom.byId("ADLayerValue").value + ' < ';
+	}
+	function fBtn4() {
+		dom.byId("ADLayerValue").value = dom.byId("ADLayerValue").value + ' <> ';
+	}
+	function fBtn5() {
+		dom.byId("ADLayerValue").value = dom.byId("ADLayerValue").value + ' >= ';
+	}
+	function fBtn6() {
+		dom.byId("ADLayerValue").value = dom.byId("ADLayerValue").value + ' <= ';
+	}
+	function fBtn7() {
+		dom.byId("ADLayerValue").value = dom.byId("ADLayerValue").value + ' Like ';
+	}
+	function fBtn8() {
+		dom.byId("ADLayerValue").value = dom.byId("ADLayerValue").value + ' And ';
+	}
+	function fBtn9() {
+		dom.byId("ADLayerValue").value = dom.byId("ADLayerValue").value + ' Or ';
+	}
+	function fUserEvent() {
 		on(dom.byId("HomeButton"), "click", fHomeButton);
 		
-		/*
-		on(dom.byId("radioProvince"), "click", fRadioProvince);
-		on(dom.byId("radioDistrict"), "click", fRadioDistrict);
-		on(dom.byId("radioLandscape"), "click", fRadioLandscape);
-		*/
+		on(dom.byId("provinceSelectLayer"), "click", fSelectProvinceLayer);
+		on(dom.byId("selectLayerButton"), "click", fSelectProvinceLayer);		
 		
 		on(dom.byId("radioProvinceZT"), "click", fRadioProvinceZT);
 		on(dom.byId("radioDistrictZT"), "click", fRadioDistrictZT);
 		on(dom.byId("radioLandscapeZT"), "click", fRadioLandscapeZT);
 		
 		//on(dom.byId("processButton"), "click", fProcess);
-		on(dom.byId("zoomToButton"), "click", fZoomTo);
+		on(dom.byId("zoomToButton"), "click", fZoomTo);		
+		//on(dom.byId("closePane"), "click", fHidePane);		
+		on(dom.byId("btnOpen"), "click", fHidePane);		
+		on(dom.byId("btnClose"), "click", fHidePane);
+		
+		on(dom.byId("btn1"), "click", fBtn1);
+		on(dom.byId("btn2"), "click", fBtn2);
+		on(dom.byId("btn3"), "click", fBtn3);
+		on(dom.byId("btn4"), "click", fBtn4);
+		on(dom.byId("btn5"), "click", fBtn5);
+		on(dom.byId("btn6"), "click", fBtn6);
+		on(dom.byId("btn7"), "click", fBtn7);
+		on(dom.byId("btn8"), "click", fBtn8);
+		on(dom.byId("btn9"), "click", fBtn9);
+		
+		//multiselect advaced search onClick
+		on(dom.byId("ADLayerField"), "click", fCheckLayerFieldAD);
+		
+		//basic search layer
+		on(dom.byId("clearSelectionButton"), "click", function () {
+			dom.byId("findLayer").value="-----";
+			doFind();
+        });
+		registry.byId("search").on("click", doFind);
+		
+		//advanced search layer
+		on(dom.byId("ADClearSelectionButton"), "click", function () {
+			dom.byId("ADLayerName").value="-----";
+			dom.byId("ADLayerValue").value="";
+			
+			var resultItems = [];
+			resultItems=["<option></option>"];
+			dom.byId("ADLayerField").innerHTML = resultItems.join("");
+			
+			doFindAD();
+        });
+		registry.byId("ADSearch").on("click", doFindAD);
 		
 		navToolbar = new Navigation(map);
           on(navToolbar, "onExtentHistoryChange", extentHistoryChangeHandler);
@@ -153,10 +436,6 @@ require([
             navToolbar.activate(Navigation.ZOOM_OUT);
           });
 
-          //registry.byId("zoomfullext").on("click", function () {
-          //  navToolbar.zoomToFullExtent();
-          //});
-
           registry.byId("zoomprev").on("click", function () {
             navToolbar.zoomToPrevExtent();
           });
@@ -168,65 +447,327 @@ require([
           registry.byId("pan").on("click", function () {
             navToolbar.activate(Navigation.PAN);
           });
+	}
+	function fHidePanel() {
+		if (iHidePane) {
+			toggler.hide();
+			iHidePane=false;
+		}
+		else {
+			toggler.show();
+			iHidePane=true;
+		}
+		//console.log(iHidePane);
+	}	
+	function fHidePane() {
+		var leftPanel = registry.byId('rightPane');
+		
+		if(leftPanel){
+			if (iHidePane) {
+				registry.byId('contentMCAI'). removeChild(leftPanel);
+				iHidePane = false;
+			} else {
+				registry.byId('contentMCAI').addChild(leftPanel);
+				iHidePane = true;
+			}			
+		}
+		//console.log(iHidePane);
+	}
+	
+	//basic search layer
+	function doFind() {
+	
+          //Set the search text to the value in the box
+          findParams.searchText = dom.byId("findLayer").value;
+          findTask.execute(findParams, showResults); 
+	}	
+	function executeAD() {
+		var queryS = new Query();
+        queryS.returnGeometry = false;
+        queryS.outFields = ["*"];
+        queryS.text = "A";
+		queryS.where = "OBJECTID > 0"
+        queryTaskS.execute(queryS, showResultsAD);
+    }
+	function showResults(results) {
+          //This function works with an array of FindResult that the task returns
+          map.graphics.clear();
+          var symbol = new SimpleFillSymbol(
+            SimpleFillSymbol.STYLE_SOLID, 
+            new SimpleLineSymbol(SimpleLineSymbol.STYLE_SOLID, new Color([98, 194, 204]), 2), 
+            new Color([98, 194, 204, 0.5])
+          );
 
-          registry.byId("deactivate").on("click", function () {
-            navToolbar.deactivate();
+          //create array of attributes
+          var items = arrayUtils.map(results, function (result) {
+            var graphic = result.feature;
+            graphic.setSymbol(symbol);
+            map.graphics.add(graphic);
+            return result.feature.attributes;
           });
 
-	//------------------------
-	//-- all functions --
-	//------------------------
+          //Create data object to be used in store
+          var data;
+			data = {
+            identifier : "DESA", //This field needs to have unique values
+            label : "*", //Name field for display. Not pertinent to a grid but may be used elsewhere.
+            items : items
+          };
+
+          //Create data store and bind to grid.
+          store = new ItemFileReadStore({
+            data : data
+          });
+          var grid = registry.byId("grid");
+          grid.setStore(store);
+          grid.on("rowclick", onRowClickHandler);
+
+          //Zoom back to the initial map extent
+          map.centerAndZoom(center, zoom);
+	}	
+	function showResultsAD(results) {
+		var resultItems = [];
+		var resultCount = results.features.length;
+		//console.log (resultCount);
+		if (resultCount > 0) {
+			var featureAttributes = results.features[1].attributes;
+			for (var attr in featureAttributes) {
+			  //resultItems.push("<b>" + attr + ":</b>  " + featureAttributes[attr] + "<br>");
+			  resultItems.push("<option>" + attr + "</option>");
+			}
+		} 
+		if (isi == "-----") {
+			resultItems=["<option></option>"];
+		}
+		dom.byId("ADLayerField").innerHTML = resultItems.join("");
+	}
+	
+	//advanced search layer
+	function doFindAD() {
+		//Set the search text to the value in the box
+		switch (isi) {
+				case 'District':
+					findParamsAD.searchFields = ["DISTRICT"];
+					break;
+				case 'Sub District':
+					findParamsAD.searchFields = ["KECAMATAN"];
+					break;
+				case 'Village':
+					findParamsAD.searchFields = ["DESA"];
+					break;
+				case 'RE Microhydro':
+					if (iSelectProvince=='Jambi'){
+						findParamsAD.searchFields = ["*"];
+					}
+					else {
+						findParamsAD.searchFields = ["*"];
+					}		
+					break;
+				case 'Forest Status':
+					if (iSelectProvince=='Jambi'){
+						findParamsAD.searchFields = ["*"];
+					}
+					else {
+						findParamsAD.searchFields = ["*"];
+					}		
+					break;
+			}
+		findParamsAD.outSpatialReference = map.spatialReference;
+		//findParamsAD.searchText = dom.byId("ADLayerValue").value;
+		//findParamsAD.where = dom.byId("ADLayerValue").value;
+		findParamsAD.layerDefinitions[11] = dom.byId("ADLayerValue").value;
+		findTaskAD.execute(findParamsAD, showResultsADs); 
+	}	
+	function showResultsADs(results) {
+          //This function works with an array of FindResult that the task returns
+          map.graphics.clear();
+          var symbol = new SimpleFillSymbol(
+            SimpleFillSymbol.STYLE_SOLID, 
+            new SimpleLineSymbol(SimpleLineSymbol.STYLE_SOLID, new Color([98, 194, 204]), 2), 
+            new Color([98, 194, 204, 0.5])
+          );
+
+          //create array of attributes
+          var items = arrayUtils.map(results, function (result) {
+            var graphic = result.feature;
+            graphic.setSymbol(symbol);
+            map.graphics.add(graphic);
+            return result.feature.attributes;
+          });
+
+          //Create data object to be used in store
+          var data; 
+			
+          /*set up layout*/
+			var layout;
+			
+			switch (isi) {
+				case 'District':
+					layout = [[
+					  {'name': 'DISTRICT', 'field': 'DISTRICT', 'width': '100px'}					  
+					]];
+					
+					data= {
+						identifier : "DISTRICT", //This field needs to have unique values
+						label : "DISTRICT", //Name field for display. Not pertinent to a grid but may be used elsewhere.
+						items : items
+					};
+					break;
+				case 'Sub District':
+					layout = [[
+					  {'name': 'KABKOT', 'field': 'KABKOT', 'width': '100px'},
+					  {'name': 'KECAMATAN', 'field': 'KECAMATAN', 'width': '100px'}
+					]];
+					
+					data= {
+						identifier : "KECAMATAN", //This field needs to have unique values
+						label : "KECAMATAN", //Name field for display. Not pertinent to a grid but may be used elsewhere.
+						items : items
+					};
+					break;
+				case 'Village':
+					layout = [[
+					  {'name': 'KABKOT', 'field': 'KABKOT', 'width': '100px'},
+					  {'name': 'KECAMATAN', 'field': 'KECAMATAN', 'width': '100px'},
+					  {'name': 'DESA', 'field': 'KECAMATAN', 'width': '100px'}
+					]];
+					
+					data= {
+						identifier : "DESA", //This field needs to have unique values
+						label : "DESA", //Name field for display. Not pertinent to a grid but may be used elsewhere.
+						items : items
+					};
+					break;
+				case 'RE Microhydro':
+					if (iSelectProvince=='Jambi'){
+
+					}
+					else {
+
+					}		
+					break;
+				case 'Forest Status':
+					if (iSelectProvince=='Jambi'){
+
+					}
+					else {
+
+					}		
+					break;
+			}
+			
+			//Create data store and bind to grid.
+			store = new ItemFileReadStore({
+			  data : data
+			});
+			
+			var grid = new DataGrid({
+			id: 'gridSS',
+			store: store,
+			structure: layout,
+			rowSelector: '20px'});
+
+			/*append the new grid to the div*/
+			gridSS.placeAt("gridDiv");
+
+			/*Call startup() to render the grid*/
+			gridSS.startup();
+			
+		  /* var grid = registry.byId("gridDiv");
+          grid.setStore(store);
+		  grid.setStructure(layout);
+          grid.on("rowclick", onRowClickHandler); */
+
+          //Zoom back to the initial map extent
+          map.centerAndZoom(center, zoom);
+	}
+	
+	//Zoom to the parcel when the user clicks a row
+	function onRowClickHandler(evt) {
+	  var clickedTaxLotId = evt.grid.getItem(evt.rowIndex).DESA;
+	  var selectedTaxLot = arrayUtils.filter(map.graphics.graphics, function (graphic) {
+		return ((graphic.attributes) && graphic.attributes.DESA === clickedTaxLotId);
+	  });
+	  if ( selectedTaxLot.length ) {
+		map.setExtent(selectedTaxLot[0].geometry.getExtent(), true);
+	  }
+	}
+	
+	//----- only for fix/reusable code/function -----
 	function extentHistoryChangeHandler () {
         registry.byId("zoomprev").disabled = navToolbar.isFirstExtent();
 		registry.byId("zoomnext").disabled = navToolbar.isLastExtent();
-    }
-		  
+    }   
 	function fSetPrinter() {
 			var printTitle = "MCA - Indonesia"
-			var printUrl = "http://sampleserver6.arcgisonline.com/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task";
-			esriConfig.defaults.io.proxyUrl = "/proxy";
+			//var printUrl = "http://sampleserver6.arcgisonline.com/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20	
+			//var printUrl = "http://202.78.203.23:6080/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task";
+			//var printUrl = "http://" + iAlamatLokal + ":6080/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task";
+			//esriConfig.defaults.io.proxyUrl = "/proxy";
 			
+			//console.log (printUrl);
+			
+			//console.log("printing");
 			var layoutTemplate, templateNames, mapOnlyIndex, templates;
           
           // create an array of objects that will be used to create print templates
 			var layouts = [{
-				name: "Letter ANSI A Landscape", 
+				name: "A4 Landscape", 
 				label: "Landscape (PDF)", 
-				format: "pdf",             
+				format: "pdf",
+				options:  { 
+					legendLayers: [],
+					scaleBarUnit: "Kilometers",
+					titleText: printTitle + ", Landscape JPG"
+				}
 			}, {
-				name: "Letter ANSI A Portrait", 
-				label: "Portrait (Image)", 
-				format: "jpg",             
+				name: "A4 Landscape", 
+				label: "Landscape (Image)", 
+				format: "jpg",
+				options:  { 
+					legendLayers: [],
+					scaleBarUnit: "Kilometers",
+					titleText: printTitle + ", Landscape JPG"
+				}
 			}];
           
           // create the print templates
-			var legendLayer = new esri.tasks.LegendLayer();
-			legendLayer.layerId = "defaultBasemap";
-
+			//var legendLayer = new esri.tasks.LegendLayer();
+			//legendLayer.layerId = "defaultBasemap";
 			var templates = arrayUtils.map(layouts, function(lo) {
-            var t = new PrintTemplate();
-            t.layout = lo.name;
-            t.label = lo.label;
-            t.format = lo.format;
-            t.layoutOptions = {
-				"authorText": "Made by:  MCA - Indonesia",
-				"copyrightText": "Copyright: MCA - Indonesia 2014",
-				//"legendLayers": layerIds , 
-				"titleText": printTitle, 
-				"scalebarUnit": "Kilometers" 
-			}
-			
-            return t;
-          });
-
-			var printer = new Print({
+				var t = new PrintTemplate();
+				t.layout = lo.name;
+				t.label = lo.label;
+				t.format = lo.format;
+				t.layoutOptions = lo.options;
+				return t;
+				});
+			/*
+			var templates = arrayUtils.map(layouts, function(lo) {
+				var t = new PrintTemplate();
+				t.layout = lo.name;
+				t.label = lo.label;
+				t.format = lo.format;
+				t.layoutOptions = {
+					"authorText": "Made by:  MCA - Indonesia",
+					"copyrightText": "Copyright: MCA - Indonesia 2014",
+					//"legendLayers": layerIds , 
+					"titleText": printTitle, 
+					"scalebarUnit": "Kilometers" 
+				}
+				
+				return t;
+			});
+			*/
+			printer = new Print({
 				map: map,
 				templates: templates,
 				url: printUrl
+				//async: false
 			}, dom.byId("printButton"));
 			printer.startup();
-		}
-		  
+			
+	}
 	function fShowLoading() {
 	  esri.show(loading);
 	  map.disableMapNavigation();
@@ -237,7 +778,432 @@ require([
 	  map.enableMapNavigation();
 	  map.showZoomSlider();
 	}
+	function fCreateSlider(iLayerIDStart, iLayerIDEnd, iSliderDivName) {
+		slider = new HorizontalSlider({
+		name: "slider" + iLayerIDStart,
+		value: 1,
+		minimum: 0,
+		maximum: 1,
+		intermediateChanges: true,
+		style: "250px",
+		onChange: function(value){
+				for (var i = iLayerIDStart; i <= iLayerIDEnd; i++) {
+					try {
+						map.getLayer(i).setOpacity(value);
+					}
+					catch (e) {
+					}
+				}			
+			}
+		}, iSliderDivName);
+	}	
+	function fCreateLegend(iLegendName, iLegendDiv) {
+		map.on('layers-add-result', function () {		
+		var legenda = new Legend({
+			map: map,
+			layerInfos: iLegendName
+		  }, iLegendDiv);
+		  legenda.startup();
+		});
+    }
+	function fCreateCategoryGroup(iLegendName, iToggleName) {
+        map.on('layers-add-result', function () {
+          //add check boxes
+          arrayUtils.forEach(iLegendName, function (layer) {
+            var layerName = layer.title;
+            var checkBox = new CheckBox({
+              name: "checkBox" + layer.layer.id,
+              value: layer.layer.id,
+              checked: layer.layer.visible
+            });
+            checkBox.on("change", function () {
+              var targetLayer = map.getLayer(this.value);
+              targetLayer.setVisibility(!targetLayer.visible);
+              this.checked = targetLayer.visible;
+			  fAdditionalInfo(this.value);
+            });
+			
+            //add the check box and label to the toc
+            domConstruct.place(checkBox.domNode, dom.byId(iToggleName), "after");
+            var checkLabel = domConstruct.create('label', {
+                'for': checkBox.name,
+                innerHTML: layerName
+              }, checkBox.domNode, "after");
+            domConstruct.place("<br />", checkLabel, "after");
+          });
+        });        
+    }
+    function fHideLegendDiv(iLegendName, iLegendDiv) {
+        var iAktif=false;
+		//console.log(layer.layer.id);
+		try {
+			arrayUtils.forEach(iLegendName, function (layer) {
+			if (map.getLayer(layer.layer.id).visible) {iAktif=true}});
+			if (!iAktif) {dom.byId(iLegendDiv).innerHTML="";};
+		} catch (err) {
+			console.log(iLegendDiv);
+			console.log(err.message);
+		}
+    }
+	function fCheckLegendDivAll() {
+		fCheckLegendDiv();
+		fCheckLegendDivSB();
+	}
+	
+	
+	
+	//----- change dynamic code/function here -----	
+	function fLoadTOC() {
+		JambiLayers = new ArcGISDynamicMapServiceLayer(iFeatureFolder, {
+		});
+		
+		//add TOC new layer list
+		map.on('layers-add-result', function(evt){
+		// overwrite the default visibility of service.
+        // TOC will honor the overwritten value.        
+		//try {
+		toc = new TOC({
+			map: map,
+			layerInfos: [			
+				{
+					layer: JambiLayers,
+					title: "Jambi", 
+					//collapsed: false, // whether this root layer should be collapsed initially, default false.
+					slider: true // whether to display a transparency slider.
+				}
+			]}, 'TOCDiv');
+			toc.startup();
+			toc.on('load', function(){
+                 if (console) 
+                    console.log('TOC loaded');
+           });
+			toc.on('toc-node-checked', function(evt){
+				if (console) {
+						console.log("TOCNodeChecked, rootLayer:"
+						+(evt.rootLayer?evt.rootLayer.id:'NULL')
+						+", serviceLayer:"+(evt.serviceLayer?evt.serviceLayer.id:'NULL')
+						+ " Checked:"+evt.checked
+						+ " Name:"+evt.serviceLayer.name	
+						);
+						//+ " Checked: false");
+				}
+			});
+		//} catch (e) {  alert(e); }		 
+		});
+	}
+	
+	//----- sulawei barat function -----
+	function fLoadAllLayersSB() {
+		
+		var imageParameters = new ImageParameters();
+        imageParameters.format = "PNG32"; //set the image type to PNG24, note default is PNG8.
+		
+		var infoTemplate = new InfoTemplate();
+        infoTemplate.setTitle("Information");
+        //infoTemplate.setContent("
+		
+		var infoTemplateDetail = new InfoTemplate();
+          infoTemplateDetail.setTitle("Information");
+		  infoTemplateDetail.setContent(
+		"<table border=0 width=100%>" +
+			"<tr>" + 
+				"<td valign=top width=74><font face=Arial size=2>DISTRICT</font></td>" +
+				" <td><font face=Arial size=2>: ${KABKOT}</font></td>" +
+			"</tr>" +
+			"<tr>" +
+				"<td valign=top width=74><font face=Arial size=2>SUB DISTRICT</font></td>" +
+				"<td><font face=Arial size=2>: ${KECAMATAN}</font></td>" +
+			"</tr>" +
+			"<tr>" +
+				"<td valign=top width=74><font face=Arial size=2>VILLAGE</font></td>" +
+				"<td><font face=Arial size=2>: ${DESA}</font></td>" +
+			"</tr>" +
+			"<tr>" +
+				"<td valign=top width=74><font face=Arial size=2>SHAPE AREA</font></td>" +
+				"<td><font face=Arial size=2>: ${Shape_Area}</font></td>" +
+			"</tr>" +
+			"<tr>" +
+				"<td colspan=2><font face=Arial size=2>${DESA:getFile}</font></td>" +
+			"</tr>" +
+			
+			
+		"</table>" 
+		);
+		getFile = function(value, key, data) {
+			var result = ""
+			
+			switch(key) {
+				case "DESA": 
+					if (data.DESA == "RANTAU SULI") {
+						result = "<a href=http://" + iAlamatLokal + "/mcai_dev/detail/Intervention.htm target=_blank " ;
+						result = result + "onclick = window.open('','More Detail',";
+						result = result + "'toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes,width=500px,height=300px');return false";
+						result = result + "><i>More Detail</i></a>";
+					}					
+					break;
+			}
+			//console.log(result);
+			return result
 
+		}
+		
+		
+		SBmcaiH = new FeatureLayer(iFeatureFolderSulawesiBarat + "1", {id:'501'});
+		legendLayersSB.push({ layer: SBmcaiH, title: 'Community-based Health and Nutrition to Reduce Stunting Project'});
+		SBmcaiPM = new FeatureLayer(iFeatureFolderSulawesiBarat + "2", {id:'502'});
+		legendLayersSB.push({ layer: SBmcaiPM, title: 'Procurement Modernization Project'});
+		SBmcaiGP = new FeatureLayer(iFeatureFolderSulawesiBarat + "3", {id:'503'});
+		legendLayersSB.push({ layer: SBmcaiGP, title: 'Green Prosperity Project'});
+		
+		SBindonesiaLayer = new FeatureLayer(iFeatureFolderSulawesiBarat + "4", {id:"504"});
+		SBindonesiaBackgroundLayer = new ArcGISTiledMapServiceLayer("http://services.arcgisonline.com/ArcGIS/rest/services/World_Shaded_Relief/MapServer", {id:'505'}); 
+		
+		//add for category analysis layers
+		//----- administrative group -----
+		SBlyr11 = new FeatureLayer(iFeatureFolderSulawesiBarat + "11", {id:"511",mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplateDetail,outFields: ["*"]});
+		legendAdministrativeSB.push({ layer: SBlyr11, title: 'Village Boundary'});		
+		SBlyr10 = new FeatureLayer(iFeatureFolderSulawesiBarat + "10", {id:"510", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters,  infoTemplate: infoTemplate, outFields: ["*"] });
+		legendAdministrativeSB.push({ layer: SBlyr10, title: 'Sub District Boundary'});
+		SBlyr9 = new FeatureLayer(iFeatureFolderSulawesiBarat + "9", {id:"509", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters,  infoTemplate: infoTemplate, outFields: ["*"] });
+		legendAdministrativeSB.push({ layer: SBlyr9, title: 'District Boundary'});		
+		SBlyr8 = new FeatureLayer(iFeatureFolderSulawesiBarat + "8", {id:"508"});
+		legendAdministrativeSB.push({ layer: SBlyr8, title: 'Capital Sub District'});		
+		SBlyr7 = new FeatureLayer(iFeatureFolderSulawesiBarat + "7", {id:"507", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate, outFields: ["*"] });
+		legendAdministrativeSB.push({ layer: SBlyr7, title: 'Capital District'});
+				
+		//----- climate -----
+		SBlyr15 = new FeatureLayer(iFeatureFolderSulawesiBarat + "15", {id:"515", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendClimateSB.push({ layer: SBlyr15, title: 'Rain Falls'});
+		
+		//----- energy -----
+		SBlyr20 = new FeatureLayer(iFeatureFolderSulawesiBarat + "20", {id:"520", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendEnergySB.push({ layer: SBlyr20, title: 'Transmission Line'});
+		SBlyr19 = new FeatureLayer(iFeatureFolderSulawesiBarat + "19", {id:"519", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendEnergySB.push({ layer: SBlyr19, title: 'RE Photovoltaic'});
+		SBlyr18 = new FeatureLayer(iFeatureFolderSulawesiBarat + "18", {id:"518", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendEnergySB.push({ layer: SBlyr18, title: 'RE Microhydro'});
+		SBlyr17 = new FeatureLayer(iFeatureFolderSulawesiBarat + "17", {id:"517", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendEnergySB.push({ layer: SBlyr17, title: 'Power Plants'});
+		
+		
+		//----- forestry -----
+		SBlyr23 = new FeatureLayer(iFeatureFolderSulawesiBarat + "23", {id:"523", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendForestrySB.push({ layer: SBlyr23, title: 'Existing Forest Cover'});
+		SBlyr22 = new FeatureLayer(iFeatureFolderSulawesiBarat + "22", {id:"522", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendForestrySB.push({ layer: SBlyr22, title: 'Forest Status'});
+		
+		//----- hydrology -----
+		SBlyr33 = new FeatureLayer(iFeatureFolderSulawesiBarat + "33", {id:"533", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendHydrologySB.push({ layer: SBlyr33, title: 'Watershed Boundary'});
+		SBlyr32 = new FeatureLayer(iFeatureFolderSulawesiBarat + "32", {id:"532", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendHydrologySB.push({ layer: SBlyr32, title: 'Mamuju'});
+		SBlyr31 = new FeatureLayer(iFeatureFolderSulawesiBarat + "31", {id:"531", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendHydrologySB.push({ layer: SBlyr31, title: 'Mamasa'});
+		SBlyr30 = new FeatureLayer(iFeatureFolderSulawesiBarat + "30", {id:"530", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendHydrologySB.push({ layer: SBlyr30, title: 'Main River'});
+		
+		//----- Infrastructure -----
+		SBlyr37 = new FeatureLayer(iFeatureFolderSulawesiBarat + "37", {id:"537", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendInfrastructureSB.push({ layer: SBlyr37, title: 'Other Road'});
+		SBlyr36 = new FeatureLayer(iFeatureFolderSulawesiBarat + "36", {id:"536", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendInfrastructureSB.push({ layer: SBlyr36, title: 'Main Road'});
+		SBlyr35 = new FeatureLayer(iFeatureFolderSulawesiBarat + "35", {id:"535", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		//legendInfrastructureSB.push({ layer: SBlyr35, title: 'Transportation'});
+		
+		//----- Landcover -----
+		SBlyr43 = new FeatureLayer(iFeatureFolderSulawesiBarat + "43", {id:"543", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendLandcoverSB.push({ layer: SBlyr43, title: 'Polewali Mandar'});
+		SBlyr42 = new FeatureLayer(iFeatureFolderSulawesiBarat + "42", {id:"542", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendLandcoverSB.push({ layer: SBlyr42, title: 'Mamuju Utara'});
+		SBlyr41 = new FeatureLayer(iFeatureFolderSulawesiBarat + "41", {id:"541", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendLandcoverSB.push({ layer: SBlyr41, title: 'Mamuju'});
+		SBlyr40 = new FeatureLayer(iFeatureFolderSulawesiBarat + "40", {id:"540", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendLandcoverSB.push({ layer: SBlyr40, title: 'Mamasa'});
+		SBlyr39 = new FeatureLayer(iFeatureFolderSulawesiBarat + "39", {id:"539", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendLandcoverSB.push({ layer: SBlyr39, title: 'Majene'});
+		
+		//----- landscape -----
+		SBlyr47 = new FeatureLayer(iFeatureFolderSulawesiBarat + "47", {id:"547", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,outFields: ["*"]});
+		legendLandscapeSB.push({ layer: SBlyr47, title: 'Mambi Bambang'});
+		SBlyr46 = new FeatureLayer(iFeatureFolderSulawesiBarat + "46", {id:"546", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,outFields: ["*"]});
+		legendLandscapeSB.push({ layer: SBlyr46, title: 'Sumarorong Pana'});
+		SBlyr45 = new FeatureLayer(iFeatureFolderSulawesiBarat + "45", {id:"545", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,outFields: ["*"]});
+		legendLandscapeSB.push({ layer: SBlyr45, title: 'Bonehau Kalumpang'});
+			
+		//----- soil -----
+		SBlyr62 = new FeatureLayer(iFeatureFolderSulawesiBarat + "62", {id:"562", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendSoilSB.push({ layer: SBlyr62, title: 'Soil'});
+		SBlyr61 = new FeatureLayer(iFeatureFolderSulawesiBarat + "61", {id:"561", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendSoilSB.push({ layer: SBlyr61, title: 'Fault'});
+		
+		//----- topography -----
+		SBlyr69 = new FeatureLayer(iFeatureFolderSulawesiBarat + "69", {id:"569", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendTopographySB.push({ layer: SBlyr69, title: 'Polewali Mandar'});
+		SBlyr68 = new FeatureLayer(iFeatureFolderSulawesiBarat + "68", {id:"568", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendTopographySB.push({ layer: SBlyr68, title: 'Mamuju Utara'});
+		SBlyr67 = new FeatureLayer(iFeatureFolderSulawesiBarat + "67", {id:"567", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		//legendTopographySB.push({ layer: SBlyr67, title: 'Kerinci'});
+		SBlyr66 = new FeatureLayer(iFeatureFolderSulawesiBarat + "66", {id:"566", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendTopographySB.push({ layer: SBlyr66, title: 'Mamuju'});
+		SBlyr65 = new FeatureLayer(iFeatureFolderSulawesiBarat + "65", {id:"565", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendTopographySB.push({ layer: SBlyr65, title: 'Mamasa'});
+		SBlyr64 = new FeatureLayer(iFeatureFolderSulawesiBarat + "64", {id:"564", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendTopographySB.push({ layer: SBlyr64, title: 'Majene'});
+		
+		fCreateLabelLayersSB("NAMA_KOTA", "CAPITAL", iFeatureFolderSulawesiBarat + "7");
+		
+        
+		map.addLayers([
+			//----- polygon layers group -----
+			//SBindonesiaBackgroundLayer, 
+			//SBindonesiaLayer, 
+			SBmcaiGP, SBmcaiH, SBmcaiPM,
+			
+			SBlyr7, SBlyr8, SBlyr9, SBlyr10, SBlyr11, 
+			
+			SBlyr15, 
+			
+			SBlyr17, SBlyr18, SBlyr19, SBlyr20,
+			
+			SBlyr22, SBlyr23, 
+			
+			//SBlyr25, SBlyr26, SBlyr27, SBlyr28,  
+			
+			SBlyr30, SBlyr31, SBlyr32, SBlyr33,  
+			
+			SBlyr35, SBlyr36, SBlyr37, 
+			
+			SBlyr39, SBlyr40, SBlyr41, SBlyr42, SBlyr43, 
+			
+			SBlyr45, SBlyr46, SBlyr47, 
+			
+			SBlyr61, SBlyr62, 
+			
+			SBlyr64, SBlyr65, SBlyr66, SBlyr67,  SBlyr68, SBlyr69
+		]);
+		
+		
+		//console.log("load sulewesi barat service layer success");
+	}
+	function fCreateLabelLayersSB(iLabelField, iIdField, iLayerURL ) {
+	    var labelField = iLabelField;
+
+	    // create a renderer for the capital layer to override default symbology
+	    var capitalColor = new esri.Color("#666");
+	    var capitalLine = new SimpleLineSymbol("solid", capitalColor, 1.5);
+	    var capitalSymbol = new SimpleFillSymbol("solid", capitalLine, null);
+	    var capitalRenderer = new SimpleRenderer(capitalSymbol);
+	    // create a feature layer to show country boundaries
+	    var capitalUrl = iLayerURL;
+	    SBcapitalLayer = new FeatureLayer(capitalUrl, {
+		    id: iIdField,
+		    outFields: [labelField] 
+	    });
+	    SBcapitalLayer.setRenderer(capitalRenderer);
+	    map.addLayer(SBcapitalLayer);
+		    // create a text symbol to define the style of labels
+	    var SBcapitalLabel = new TextSymbol().setColor(capitalColor);
+	    SBcapitalLabel.font.setSize("10pt");
+	    SBcapitalLabel.font.setFamily("arial");
+	    SBcapitalLabelRenderer = new SimpleRenderer(SBcapitalLabel);
+	    SBlabelLayer = new LabelLayer({ id: "labels" });
+	    // tell the label layer to label the countries feature layer 
+	    // using the field named "admin"
+	    SBlabelLayer.addFeatureLayer(SBcapitalLayer, SBcapitalLabelRenderer, "${" + labelField + "}");
+	    // add the label layer to the map
+	    map.addLayer(SBlabelLayer);
+	}
+	function fHideAllFeatureLayersSB() {
+		SBmcaiGP.hide(); SBmcaiH.hide(); SBmcaiPM.hide();
+			
+		SBlyr7.hide();  SBlyr8.hide();  SBlyr9.hide();  SBlyr10.hide();  SBlyr11.hide();  
+		
+		SBlyr15.hide();  
+		
+		SBlyr17.hide();  SBlyr18.hide();  SBlyr19.hide();  SBlyr20.hide(); 
+		
+		SBlyr22.hide();  SBlyr23.hide();  
+		
+		//SBlyr25.hide();  SBlyr26.hide();  SBlyr27.hide();  SBlyr28.hide();   
+		
+		SBlyr30.hide();  SBlyr31.hide();  SBlyr32.hide();  SBlyr33.hide();   
+		
+		SBlyr35.hide();  SBlyr36.hide();  SBlyr37.hide();  
+		
+		SBlyr39.hide();  SBlyr40.hide();  SBlyr41.hide();  SBlyr42.hide();  SBlyr43.hide();  
+		
+		SBlyr45.hide();  SBlyr46.hide();  SBlyr47.hide();  
+		
+		SBlyr61.hide();  SBlyr62.hide();  
+		
+		SBlyr64.hide();  SBlyr65.hide();  SBlyr66.hide();  SBlyr67.hide();   SBlyr68.hide();  SBlyr69.hide();
+		
+		SBcapitalLayer.hide(); SBlabelLayer.hide();
+	}
+	function fSetLegendSB() {
+		fCreateLegend(legendLayersSB, "legendDivSB");
+		fCreateLegend(legendAdministrativeSB, "legendAdministrativeDivSB");
+		fCreateLegend(legendClimateSB, "legendClimateDivSB");
+        fCreateLegend(legendEnergySB, "legendEnergyDivSB");
+        fCreateLegend(legendForestrySB, "legendForestryDivSB");
+        fCreateLegend(legendHydrologySB, "legendHydrologyDivSB");
+        fCreateLegend(legendInfrastructureSB, "legendInfrastructureDivSB");
+        fCreateLegend(legendLandcoverSB, "legendLandcoverDivSB");
+        fCreateLegend(legendLandscapeSB, "legendLandscapeDivSB");
+        fCreateLegend(legendSoilSB, "legendSoilDivSB");
+		fCreateLegend(legendTopographySB, "legendTopographyDivSB");
+	}
+	function fAddCategoryGroupSB() {
+		fCreateCategoryGroup(legendLayersSB, "toggleGeneralSB");	
+        fCreateCategoryGroup(legendAdministrativeSB, "toggleAdministrativeSB");
+        fCreateCategoryGroup(legendClimateSB, "toggleClimateSB");
+		fCreateCategoryGroup(legendEnergySB, "toggleEnergySB");
+        fCreateCategoryGroup(legendForestrySB, "toggleForestrySB");
+        fCreateCategoryGroup(legendHydrologySB, "toggleHydrologySB");
+        fCreateCategoryGroup(legendInfrastructureSB, "toggleInfrastructureSB");
+        fCreateCategoryGroup(legendLandcoverSB, "toggleLandcoverSB");
+        fCreateCategoryGroup(legendLandscapeSB, "toggleLandscapeSB");
+        fCreateCategoryGroup(legendSoilSB, "toggleSoilSB");
+        fCreateCategoryGroup(legendTopographySB, "toggleTopographySB");
+	}
+	function fCheckLegendDivSB() {
+		fHideLegendDiv(legendLayersSB,"legendDivSB");
+        fHideLegendDiv(legendAdministrativeSB,"legendAdministrativeDivSB");
+        fHideLegendDiv(legendClimateSB,"legendClimateDivSB");
+        fHideLegendDiv(legendEnergySB,"legendEnergyDivSB");
+        fHideLegendDiv(legendForestrySB,"legendForestryDivSB");
+        fHideLegendDiv(legendHydrologySB,"legendHydrologyDivSB");
+        fHideLegendDiv(legendInfrastructureSB,"legendInfrastructureDivSB");
+        fHideLegendDiv(legendLandcoverSB,"legendLandcoverDivSB");
+        fHideLegendDiv(legendLandscapeSB,"legendLandscapeDivSB");
+        fHideLegendDiv(legendSoilSB,"legendSoilDivSB");
+		fHideLegendDiv(legendTopographySB,"legendTopographyDivSB");
+	}
+	function fKosongDivSB() {
+		dom.byId("legendDivSB").innerHTML="";
+		dom.byId("legendAdministrativeDivSB").innerHTML="";
+		dom.byId("legendCarbonProjectDivSB").innerHTML="";
+		dom.byId("legendClimateDivSB").innerHTML="";
+		dom.byId("legendEnergyDivSB").innerHTML="";
+		dom.byId("legendForestryDivSB").innerHTML="";
+		dom.byId("legendHydrologyDivSB").innerHTML="";
+		dom.byId("legendInfrastructureDivSB").innerHTML="";
+		dom.byId("legendLandcoverDivSB").innerHTML="";
+		dom.byId("legendLandscapeDivSB").innerHTML="";
+		dom.byId("legendLandDegradationDivSB").innerHTML="";
+		dom.byId("legendPermitAgricultureDivSB").innerHTML="";
+		dom.byId("legendMiningDivSB").innerHTML="";
+		dom.byId("legendPermitsDivSB").innerHTML="";
+		dom.byId("legendLanduseSpatialPlanDivSB").innerHTML="";
+		dom.byId("legendSocioEconomicDivSB").innerHTML="";
+		dom.byId("legendSoilDivSB").innerHTML="";
+		dom.byId("legendTopographyDivSB").innerHTML="";
+	}
+	function fAdditionalInfoSB() {
+	}
+	
+	
+	//----- jambi layer function -----
 	function fLoadAllLayers() {
 		var imageParameters = new ImageParameters();
         imageParameters.format = "PNG32"; //set the image type to PNG24, note default is PNG8.
@@ -263,8 +1229,13 @@ require([
 				"<td><font face=Arial size=2>: ${DESA}</font></td>" +
 			"</tr>" +
 			"<tr>" +
+				"<td valign=top width=74><font face=Arial size=2>SHAPE AREA</font></td>" +
+				"<td><font face=Arial size=2>: ${Shape_Area}</font></td>" +
+			"</tr>" +
+			"<tr>" +
 				"<td colspan=2><font face=Arial size=2>${DESA:getFile}</font></td>" +
 			"</tr>" +
+			
 			
 		"</table>" 
 		);
@@ -281,7 +1252,7 @@ require([
 					}					
 					break;
 			}
-			console.log(result);
+			//console.log(result);
 			return result
 
 		}
@@ -294,7 +1265,7 @@ require([
 		legendLayers.push({ layer: mcaiGP, title: 'Green Prosperity Project'});
 		
 		indonesiaLayer = new FeatureLayer(iFeatureFolder + "4", {id:"4"});
-		indonesiaBackgroundLayer = new FeatureLayer(iFeatureFolder + "5", {id:'5'}); 
+		indonesiaBackgroundLayer = new ArcGISTiledMapServiceLayer("http://services.arcgisonline.com/ArcGIS/rest/services/World_Shaded_Relief/MapServer", {id:'5'}); 
 		
 		/*
 		landscapeFeatureLayer = new FeatureLayer(iMapServicesFolder + "indonesia/MapServer/207", {
@@ -305,103 +1276,89 @@ require([
 		});
 		*/
 		
+		
 		//add for category analysis layers
 		//----- administrative group -----
-		lyr12 = new FeatureLayer(iFeatureFolder + "12", {
-			id:"12",
-			mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, 
-			infoTemplate: infoTemplateDetail,
-			outFields: ["*"]
-		});
-		legendAdministrative.push({ layer: lyr12, title: 'Village Boundary'});
-		
-		lyr11 = new FeatureLayer(iFeatureFolder + "11", {
-			id:"11",
-			mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, 
-			infoTemplate: infoTemplate,
-			outFields: ["*"]
-		});
-		legendAdministrative.push({ layer: lyr11, title: 'Sub District Boundary'});
-		lyr10 = new FeatureLayer(iFeatureFolder + "10", {
-			id:"10",
-			mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, 
-			infoTemplate: infoTemplate,
-			outFields: ["*"]
-		});
-		legendAdministrative.push({ layer: lyr10, title: 'District Boundary'});		
-		lyr9 = new FeatureLayer(iFeatureFolder + "9", {id:"9"});
-		legendAdministrative.push({ layer: lyr9, title: 'Capital Sub District'});		
-		lyr8 = new FeatureLayer(iFeatureFolder + "8", {id:"8", slider: true});
-		legendAdministrative.push({ layer: lyr8, title: 'Capital District'});
-		
-		//----- agriculture group -----
-		lyr14 = new FeatureLayer(iFeatureFolder + "14", {id:"14", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendAgriculture.push({ layer: lyr14, title: 'Plantation Concession'});
+		lyr12 = new FeatureLayer(iFeatureFolder + "12", {id:"12",mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,outFields: ["*"]});
+		legendAdministrative.push({ layer: lyr12, title: 'Settlement Location'});				
+		lyr11 = new FeatureLayer(iFeatureFolder + "11", {id:"11",mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplateDetail,outFields: ["*"]});
+		legendAdministrative.push({ layer: lyr11, title: 'Village Boundary'});		
+		lyr10 = new FeatureLayer(iFeatureFolder + "10", {id:"10", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters,  infoTemplate: infoTemplate, outFields: ["*"] });
+		legendAdministrative.push({ layer: lyr10, title: 'Sub District Boundary'});
+		lyr9 = new FeatureLayer(iFeatureFolder + "9", {id:"9", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters,  infoTemplate: infoTemplate, outFields: ["*"] });
+		legendAdministrative.push({ layer: lyr9, title: 'District Boundary'});		
+		lyr8 = new FeatureLayer(iFeatureFolder + "8", {id:"8"});
+		legendAdministrative.push({ layer: lyr8, title: 'Capital Sub District'});		
+		lyr7 = new FeatureLayer(iFeatureFolder + "7", {id:"7", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate, outFields: ["*"] });
+		legendAdministrative.push({ layer: lyr7, title: 'Capital District'});
 		
 		//----- carbon project -----
-		lyr20 = new FeatureLayer(iFeatureFolder + "20", {id:"20", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendCarbonProject.push({ layer: lyr20, title: 'Carbon Stock 2011 (MoF)'});
-		lyr19 = new FeatureLayer(iFeatureFolder + "19", {id:"19", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendCarbonProject.push({ layer: lyr19, title: 'Berbak NP Carbon Initiative'});
 		lyr18 = new FeatureLayer(iFeatureFolder + "18", {id:"18", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendCarbonProject.push({ layer: lyr18, title: 'Sampling Location (ICRAF)'});
+		legendCarbonProject.push({ layer: lyr18, title: 'Carbon Stock 2011 (MoF)'});
 		lyr17 = new FeatureLayer(iFeatureFolder + "17", {id:"17", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendCarbonProject.push({ layer: lyr17, title: 'Permanent Forest Plots (ZSL)'});
+		legendCarbonProject.push({ layer: lyr17, title: 'Berbak NP Carbon Initiative'});
 		lyr16 = new FeatureLayer(iFeatureFolder + "16", {id:"16", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendCarbonProject.push({ layer: lyr16, title: 'Carbon Measurement Points (ZSL)'});
+		legendCarbonProject.push({ layer: lyr16, title: 'Sampling Location (ICRAF)'});
+		//lyr15 = new FeatureLayer(iFeatureFolder + "15", {id:"15", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		//legendCarbonProject.push({ layer: lyr15, title: 'Permanent Forest Plots (ZSL)'});
+		lyr14 = new FeatureLayer(iFeatureFolder + "14", {id:"14", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendCarbonProject.push({ layer: lyr14, title: 'Carbon Measurement Points (ZSL)'});
 		
 		//----- climate -----
-		lyr22 = new FeatureLayer(iFeatureFolder + "22", {id:"22", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendClimate.push({ layer: lyr22, title: 'Rain Falls'});
+		lyr20 = new FeatureLayer(iFeatureFolder + "20", {id:"20", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendClimate.push({ layer: lyr20, title: 'Rain Falls'});
 		
 		//----- ecology -----
-		lyr31 = new FeatureLayer(iFeatureFolder + "31", {id:"31", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendEcology.push({ layer: lyr31, title: 'Important Ecosystem'});
-		lyr30 = new FeatureLayer(iFeatureFolder + "30", {id:"30", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendEcology.push({ layer: lyr30, title: 'Ecoregion (WWF)'});
+		/*
 		lyr29 = new FeatureLayer(iFeatureFolder + "29", {id:"29", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendEcology.push({ layer: lyr29, title: 'HCV 3 – Endangered Ecosystem'});
+		legendEcology.push({ layer: lyr29, title: 'Important Ecosystem'});
 		lyr28 = new FeatureLayer(iFeatureFolder + "28", {id:"28", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendEcology.push({ layer: lyr28, title: 'HCV 2 – Important Natural Landscapes'});
+		legendEcology.push({ layer: lyr28, title: 'Ecoregion (WWF)'});
 		lyr27 = new FeatureLayer(iFeatureFolder + "27", {id:"27", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendEcology.push({ layer: lyr27, title: 'HCV 1.2 - Threatened and Endangered Species (WWF)'});
+		legendEcology.push({ layer: lyr27, title: 'HCV 3 – Endangered Ecosystem'});
 		lyr26 = new FeatureLayer(iFeatureFolder + "26", {id:"26", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendEcology.push({ layer: lyr26, title: 'HCV 1.1 - Wild Plant Sanctuaries (WWF)'});
+		legendEcology.push({ layer: lyr26, title: 'HCV 2 – Important Natural Landscapes'});
 		lyr25 = new FeatureLayer(iFeatureFolder + "25", {id:"25", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendEcology.push({ layer: lyr25, title: 'Elephant Distribution'});
+		legendEcology.push({ layer: lyr25, title: 'HCV 1.2 - Threatened and Endangered Species (WWF)'});
 		lyr24 = new FeatureLayer(iFeatureFolder + "24", {id:"24", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendEcology.push({ layer: lyr24, title: 'Tiger Distribution'});
-				
+		legendEcology.push({ layer: lyr24, title: 'HCV 1.1 - Wild Plant Sanctuaries (WWF)'});
+		lyr23 = new FeatureLayer(iFeatureFolder + "23", {id:"23", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendEcology.push({ layer: lyr23, title: 'Elephant Distribution'});
+		lyr22 = new FeatureLayer(iFeatureFolder + "22", {id:"22", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendEcology.push({ layer: lyr22, title: 'Tiger Distribution'});
+		*/
 		//----- energy -----
-		lyr36 = new FeatureLayer(iFeatureFolder + "36", {id:"36", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendEnergy.push({ layer: lyr36, title: 'Transmission Line'});
-		lyr35 = new FeatureLayer(iFeatureFolder + "35", {id:"35", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendEnergy.push({ layer: lyr35, title: 'Power Plants (Muaro Jambi)'});
 		lyr34 = new FeatureLayer(iFeatureFolder + "34", {id:"34", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendEnergy.push({ layer: lyr34, title: 'Power Plants (Merangin)'});
+		legendEnergy.push({ layer: lyr34, title: 'Transmission Line'});
 		lyr33 = new FeatureLayer(iFeatureFolder + "33", {id:"33", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendEnergy.push({ layer: lyr33, title: 'RE Microhydro (Merangin)'});
+		legendEnergy.push({ layer: lyr33, title: 'Power Plants (Muaro Jambi)'});
+		lyr32 = new FeatureLayer(iFeatureFolder + "32", {id:"32", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendEnergy.push({ layer: lyr32, title: 'Power Plants (Merangin)'});
+		lyr31 = new FeatureLayer(iFeatureFolder + "31", {id:"31", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendEnergy.push({ layer: lyr31, title: 'RE Microhydro (Merangin)'});
 		
 		//----- forestry -----
-		lyr45 = new FeatureLayer(iFeatureFolder + "45", {id:"45", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendForestry.push({ layer: lyr45, title: 'Existing Forest Cover'});
-		lyr44 = new FeatureLayer(iFeatureFolder + "44", {id:"44", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendForestry.push({ layer: lyr44, title: 'Tenurial Forest'});
 		lyr43 = new FeatureLayer(iFeatureFolder + "43", {id:"43", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendForestry.push({ layer: lyr43, title: 'Village Forest'});
+		legendForestry.push({ layer: lyr43, title: 'Existing Forest Cover'});
 		lyr42 = new FeatureLayer(iFeatureFolder + "42", {id:"42", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendForestry.push({ layer: lyr42, title: 'Rimba Corridor'});
+		legendForestry.push({ layer: lyr42, title: 'Tenurial Forest'});
 		lyr41 = new FeatureLayer(iFeatureFolder + "41", {id:"41", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendForestry.push({ layer: lyr41, title: 'Forest Management Unit'});
+		legendForestry.push({ layer: lyr41, title: 'Village Forest'});
 		lyr40 = new FeatureLayer(iFeatureFolder + "40", {id:"40", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendForestry.push({ layer: lyr40, title: 'Forest Conservation Activities'});
+		legendForestry.push({ layer: lyr40, title: 'Rimba Corridor'});
 		lyr39 = new FeatureLayer(iFeatureFolder + "39", {id:"39", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendForestry.push({ layer: lyr39, title: 'Forest Production Moratorium'});
+		legendForestry.push({ layer: lyr39, title: 'Forest Management Unit'});
+		/*
 		lyr38 = new FeatureLayer(iFeatureFolder + "38", {id:"38", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendForestry.push({ layer: lyr38, title: 'Forest Status'});
+		legendForestry.push({ layer: lyr38, title: 'Forest Conservation Activities'});
+		lyr37 = new FeatureLayer(iFeatureFolder + "37", {id:"37", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendForestry.push({ layer: lyr37, title: 'Forest Production Moratorium'});
+		*/
+		lyr36 = new FeatureLayer(iFeatureFolder + "36", {id:"36", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendForestry.push({ layer: lyr36, title: 'Forest Status'});
 		
 		/*
-		//----- hazard vulnerability -----
+		//----- hazard vulnerability -----		
 		lyr52 = new FeatureLayer(iFeatureFolder + "52", {id:"52", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendHazardVunerabillity.push({ layer: lyr52, title: 'Dryness BNPB'});
 		lyr51 = new FeatureLayer(iFeatureFolder + "51", {id:"51", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
@@ -410,136 +1367,145 @@ require([
 		legendHazardVunerabillity.push({ layer: lyr50, title: 'Flood BNPB'});
 		lyr49 = new FeatureLayer(iFeatureFolder + "49", {id:"49", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendHazardVunerabillity.push({ layer: lyr49, title: 'Forest File and Land BNPB'});
+		
+		//----- hotspot -----		
+		lyr53 = new FeatureLayer(iFeatureFolder + "53", {id:"53", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendHotspot.push({ layer: lyr53, title: 'Hotspot Distribution (2012)'});
+		lyr52 = new FeatureLayer(iFeatureFolder + "52", {id:"52", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendHotspot.push({ layer: lyr52, title: 'Hotspot Distribution (2011)'});
+		lyr51 = new FeatureLayer(iFeatureFolder + "51", {id:"51", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendHotspot.push({ layer: lyr51, title: 'Hotspot Distribution (2010)'});
+		lyr50 = new FeatureLayer(iFeatureFolder + "50", {id:"50", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendHotspot.push({ layer: lyr50, title: 'Hotspot Distribution (1999 - 2009) '});
 		*/
 		
-		//----- hotspot -----
-		lyr55 = new FeatureLayer(iFeatureFolder + "55", {id:"55", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendHotspot.push({ layer: lyr55, title: 'Hotspot Distribution (2012)'});
-		lyr54 = new FeatureLayer(iFeatureFolder + "54", {id:"54", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendHotspot.push({ layer: lyr54, title: 'Hotspot Distribution (2011)'});
-		lyr53 = new FeatureLayer(iFeatureFolder + "53", {id:"53", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendHotspot.push({ layer: lyr53, title: 'Hotspot Distribution (2010)'});
-		lyr52 = new FeatureLayer(iFeatureFolder + "52", {id:"52", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendHotspot.push({ layer: lyr52, title: 'Hotspot Distribution (1999 - 2009) '});
-		
 		//----- hydrology -----
-		lyr69 = new FeatureLayer(iFeatureFolder + "69", {id:"69", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendHydrology.push({ layer: lyr69, title: 'Watershed Boundary'});
-		lyr68 = new FeatureLayer(iFeatureFolder + "68", {id:"68", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendHydrology.push({ layer: lyr68, title: 'River - Tebo'});
 		lyr67 = new FeatureLayer(iFeatureFolder + "67", {id:"67", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendHydrology.push({ layer: lyr67, title: 'River - Tanjung JabungTimur'});
+		legendHydrology.push({ layer: lyr67, title: 'Watershed Boundary'});
 		lyr66 = new FeatureLayer(iFeatureFolder + "66", {id:"66", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendHydrology.push({ layer: lyr66, title: 'River - Tanjung Jabung Barat'});
+		legendHydrology.push({ layer: lyr66, title: 'Tebo'});
 		lyr65 = new FeatureLayer(iFeatureFolder + "65", {id:"65", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendHydrology.push({ layer: lyr65, title: 'River - Sungai Penuh'});
+		legendHydrology.push({ layer: lyr65, title: 'Tanjung JabungTimur'});
 		lyr64 = new FeatureLayer(iFeatureFolder + "64", {id:"64", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendHydrology.push({ layer: lyr64, title: 'River - Sarolangun'});
+		legendHydrology.push({ layer: lyr64, title: 'Tanjung Jabung Barat'});
 		lyr63 = new FeatureLayer(iFeatureFolder + "63", {id:"63", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendHydrology.push({ layer: lyr63, title: 'River - Muaro Jambi'});
+		legendHydrology.push({ layer: lyr63, title: 'Sungai Penuh'});
 		lyr62 = new FeatureLayer(iFeatureFolder + "62", {id:"62", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendHydrology.push({ layer: lyr62, title: 'River - Merangin'});
+		legendHydrology.push({ layer: lyr62, title: 'Sarolangun'});
 		lyr61 = new FeatureLayer(iFeatureFolder + "61", {id:"61", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendHydrology.push({ layer: lyr61, title: 'River - Kerinci'});
+		legendHydrology.push({ layer: lyr61, title: 'Muaro Jambi'});
 		lyr60 = new FeatureLayer(iFeatureFolder + "60", {id:"60", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendHydrology.push({ layer: lyr60, title: 'River - Kota Jambi'});
+		legendHydrology.push({ layer: lyr60, title: 'Merangin'});
 		lyr59 = new FeatureLayer(iFeatureFolder + "59", {id:"59", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendHydrology.push({ layer: lyr59, title: 'River - Bungo'});
+		legendHydrology.push({ layer: lyr59, title: 'Kerinci'});
 		lyr58 = new FeatureLayer(iFeatureFolder + "58", {id:"58", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendHydrology.push({ layer: lyr58, title: 'River - Batanghari'});
+		legendHydrology.push({ layer: lyr58, title: 'Kota Jambi'});
 		lyr57 = new FeatureLayer(iFeatureFolder + "57", {id:"57", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendHydrology.push({ layer: lyr57, title: 'Main River'});
+		legendHydrology.push({ layer: lyr57, title: 'Bungo'});
+		lyr56 = new FeatureLayer(iFeatureFolder + "56", {id:"56", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendHydrology.push({ layer: lyr56, title: 'Batanghari'});
+		lyr55 = new FeatureLayer(iFeatureFolder + "55", {id:"55", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendHydrology.push({ layer: lyr55, title: 'Main River'});
 		
 		//----- Infrastructure -----
-		lyr82 = new FeatureLayer(iFeatureFolder + "82", {id:"82", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendInfrastructure.push({ layer: lyr82, title: 'Other Road - Tebo'});
-		lyr81 = new FeatureLayer(iFeatureFolder + "81", {id:"81", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendInfrastructure.push({ layer: lyr81, title: 'Other Road - Tanjung JabungTimur'});
+		/*
 		lyr80 = new FeatureLayer(iFeatureFolder + "80", {id:"80", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendInfrastructure.push({ layer: lyr80, title: 'Other Road - Tanjung Jabung Barat'});
+		legendInfrastructure.push({ layer: lyr80, title: 'Tebo'});
 		lyr79 = new FeatureLayer(iFeatureFolder + "79", {id:"79", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendInfrastructure.push({ layer: lyr79, title: 'Other Road - Sungai Penuh'});
+		legendInfrastructure.push({ layer: lyr79, title: 'Tanjung JabungTimur'});
 		lyr78 = new FeatureLayer(iFeatureFolder + "78", {id:"78", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendInfrastructure.push({ layer: lyr78, title: 'Other Road - Sarolangun'});
+		legendInfrastructure.push({ layer: lyr78, title: 'Tanjung Jabung Barat'});
 		lyr77 = new FeatureLayer(iFeatureFolder + "77", {id:"77", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendInfrastructure.push({ layer: lyr77, title: 'Other Road - Muaro Jambi'});
+		legendInfrastructure.push({ layer: lyr77, title: 'Sungai Penuh'});
 		lyr76 = new FeatureLayer(iFeatureFolder + "76", {id:"76", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendInfrastructure.push({ layer: lyr76, title: 'Other Road - Merangin'});
+		legendInfrastructure.push({ layer: lyr76, title: 'Sarolangun'});
+		*/
 		lyr75 = new FeatureLayer(iFeatureFolder + "75", {id:"75", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendInfrastructure.push({ layer: lyr75, title: 'Other Road - Kerinci'});
+		legendInfrastructure.push({ layer: lyr75, title: 'Muaro Jambi'});
 		lyr74 = new FeatureLayer(iFeatureFolder + "74", {id:"74", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendInfrastructure.push({ layer: lyr74, title: 'Other Road - Kota Jambi'});
+		legendInfrastructure.push({ layer: lyr74, title: 'Merangin'});
+		/*
 		lyr73 = new FeatureLayer(iFeatureFolder + "73", {id:"73", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendInfrastructure.push({ layer: lyr73, title: 'Other Road - Bungo'});
+		legendInfrastructure.push({ layer: lyr73, title: 'Kerinci'});
 		lyr72 = new FeatureLayer(iFeatureFolder + "72", {id:"72", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendInfrastructure.push({ layer: lyr72, title: 'Other Road - Batanghari'});
-		lyr71 = new FeatureLayer(iFeatureFolder + "71", {id:"71", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendInfrastructure.push({ layer: lyr71, title: 'Main Road'});
+		legendInfrastructure.push({ layer: lyr72, title: 'Kota Jambi'});
+		lyr71 = new FeatureLayer(iFeatureFolder + "71", {id:"72", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendInfrastructure.push({ layer: lyr71, title: 'Bungo'});
+		lyr70 = new FeatureLayer(iFeatureFolder + "70", {id:"70", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendInfrastructure.push({ layer: lyr70, title: 'Batanghari'});
+		*/
+		lyr69 = new FeatureLayer(iFeatureFolder + "69", {id:"69", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendInfrastructure.push({ layer: lyr69, title: 'Main Road'});
+		
 		
 		//----- Landcover -----
-		lyr94 = new FeatureLayer(iFeatureFolder + "94", {id:"94", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendLandcover.push({ layer: lyr94, title: 'Landcover 2011 - Tebo'});
-		lyr93 = new FeatureLayer(iFeatureFolder + "93", {id:"93", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendLandcover.push({ layer: lyr93, title: 'Landcover 2011 - Tanjung JabungTimur'});
 		lyr92 = new FeatureLayer(iFeatureFolder + "92", {id:"92", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendLandcover.push({ layer: lyr92, title: 'Landcover 2011 - Tanjung Jabung Barat'});
+		legendLandcover.push({ layer: lyr92, title: 'Tebo'});
 		lyr91 = new FeatureLayer(iFeatureFolder + "91", {id:"91", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendLandcover.push({ layer: lyr91, title: 'Landcover 2011 - Sungai Penuh'});
+		legendLandcover.push({ layer: lyr91, title: 'Tanjung JabungTimur'});
 		lyr90 = new FeatureLayer(iFeatureFolder + "90", {id:"90", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendLandcover.push({ layer: lyr90, title: 'Landcover 2011 - Sarolangun'});
+		legendLandcover.push({ layer: lyr90, title: 'Tanjung Jabung Barat'});
 		lyr89 = new FeatureLayer(iFeatureFolder + "89", {id:"89", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendLandcover.push({ layer: lyr89, title: 'Landcover 2011 - Muaro Jambi'});
+		legendLandcover.push({ layer: lyr89, title: 'Sungai Penuh'});
 		lyr88 = new FeatureLayer(iFeatureFolder + "88", {id:"88", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendLandcover.push({ layer: lyr88, title: 'Landcover 2011 - Merangin'});
+		legendLandcover.push({ layer: lyr88, title: 'Sarolangun'});
 		lyr87 = new FeatureLayer(iFeatureFolder + "87", {id:"87", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendLandcover.push({ layer: lyr87, title: 'Landcover 2011 - Kerinci'});
+		legendLandcover.push({ layer: lyr87, title: 'Muaro Jambi'});
 		lyr86 = new FeatureLayer(iFeatureFolder + "86", {id:"86", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendLandcover.push({ layer: lyr86, title: 'Landcover 2011 - Kota Jambi'});
+		legendLandcover.push({ layer: lyr86, title: 'Merangin'});
 		lyr85 = new FeatureLayer(iFeatureFolder + "85", {id:"85", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendLandcover.push({ layer: lyr85, title: 'Landcover 2011 - Bungo'});
+		legendLandcover.push({ layer: lyr85, title: 'Kerinci'});
 		lyr84 = new FeatureLayer(iFeatureFolder + "84", {id:"84", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendLandcover.push({ layer: lyr84, title: 'Landcover 2011 - Batanghari'});
+		legendLandcover.push({ layer: lyr84, title: 'Kota Jambi'});
+		lyr83 = new FeatureLayer(iFeatureFolder + "83", {id:"83", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendLandcover.push({ layer: lyr83, title: 'Bungo'});
+		lyr82 = new FeatureLayer(iFeatureFolder + "82", {id:"82", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendLandcover.push({ layer: lyr82, title: 'Batanghari'});
 		
 		//----- landscape -----
-		lyr97 = new FeatureLayer(iFeatureFolder + "97", {id:"97", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendLandscape.push({ layer: lyr97, title: 'Sungai Tenang'});
-		lyr96 = new FeatureLayer(iFeatureFolder + "96", {id:"96", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendLandscape.push({ layer: lyr96, title: 'Berbak'});
+		lyr95 = new FeatureLayer(iFeatureFolder + "95", {id:"95", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,outFields: ["*"]});
+		legendLandscape.push({ layer: lyr95, title: 'Sungai Tenang'});
+		lyr94 = new FeatureLayer(iFeatureFolder + "94", {id:"94", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,outFields: ["*"]});
+		legendLandscape.push({ layer: lyr94, title: 'Berbak'});
 		
 		//----- land degradation -----
-		lyr99 = new FeatureLayer(iFeatureFolder + "99", {id:"99", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendLandDegradation.push({ layer: lyr99, title: 'Critical Land'});
+		lyr97 = new FeatureLayer(iFeatureFolder + "97", {id:"97", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		legendLandDegradation.push({ layer: lyr97, title: 'Critical Land'});
 		
-		//----- landuse spatial plan -----
-		lyr101 = new FeatureLayer(iFeatureFolder + "101", {id:"101", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendLanduseSpatialPlan.push({ layer: lyr101, title: 'Draft RTRWP Jambi (2011)'});
+		//----- Landuse (Spatial Planning) -----
+		lyr99 = new FeatureLayer(iFeatureFolder + "99", {id:"99", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate, outFields: ["*"]});
+		legendLanduseSpatialPlan.push({ layer: lyr99, title: 'Draft RTRWP Jambi (2011)'});
 		
-		//----- mining -----
+		//----- permit agriculture -----
+		lyr101 = new FeatureLayer(iFeatureFolder + "101", {id:"101", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate, outFields: ["*"] });
+		legendPermitAgriculture.push({ layer: lyr101, title: 'Oil Palm Plantation Concession'});
+		
+		//----- permit mining -----
 		lyr104 = new FeatureLayer(iFeatureFolder + "104", {id:"104", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendMining.push({ layer: lyr104, title: 'Oil and Gas Concession'});
-		lyr103 = new FeatureLayer(iFeatureFolder + "103", {id:"103", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		lyr103 = new FeatureLayer(iFeatureFolder + "103", {id:"103", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate, outFields: ["*"]});
 		legendMining.push({ layer: lyr103, title: 'Mining Concession'});
 		
-		//----- permits -----
-		lyr113 = new FeatureLayer(iFeatureFolder + "113", {id:"113", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendPermits.push({ layer: lyr113, title: 'Permit to Utilize Forest Product in Ecological Restoration'});
-		lyr112 = new FeatureLayer(iFeatureFolder + "112", {id:"112", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendPermits.push({ layer: lyr112, title: 'Permit to Utilize Forest Product in Community Timber Estate'});
-		lyr111 = new FeatureLayer(iFeatureFolder + "111", {id:"111", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendPermits.push({ layer: lyr111, title: 'Permit to Utilize Forest Product in Timber Estate'});
-		lyr110 = new FeatureLayer(iFeatureFolder + "110", {id:"110", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendPermits.push({ layer: lyr110, title: 'Permit to Utilize Forest Product in Natural Forest'});
-		lyr109 = new FeatureLayer(iFeatureFolder + "109", {id:"109", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendPermits.push({ layer: lyr109, title: 'Land Cultivation Right (HGU)'});
-		lyr108 = new FeatureLayer(iFeatureFolder + "108", {id:"108", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		//----- permits forestry -----
+		lyr113 = new FeatureLayer(iFeatureFolder + "113", {id:"113", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate, outFields: ["*"]});
+		legendPermits.push({ layer: lyr113, title: 'Permit to Utilize Forest Product in Ecological Restoration (IUPHHK - RE)'});
+		lyr112 = new FeatureLayer(iFeatureFolder + "112", {id:"112", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate, outFields: ["*"]});
+		legendPermits.push({ layer: lyr112, title: 'Permit to Utilize Forest Product in Community Timber Estate (IUPHHK - HTR)'});
+		lyr111 = new FeatureLayer(iFeatureFolder + "111", {id:"111", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate, outFields: ["*"]});
+		legendPermits.push({ layer: lyr111, title: 'Permit to Utilize Forest Product in Timber Estate (IUPHHK - HTI)'});
+		lyr110 = new FeatureLayer(iFeatureFolder + "110", {id:"110", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate, outFields: ["*"]});
+		legendPermits.push({ layer: lyr110, title: 'Permit to Utilize Forest Product in Natural Forest (IUPHHK - HA)'});
+		/*lyr109 = new FeatureLayer(iFeatureFolder + "109", {id:"109", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate, outFields: ["*"]});
+		legendPermits.push({ layer: lyr109, title: 'Land Cultivation Right (HGU)'});*/
+		lyr108 = new FeatureLayer(iFeatureFolder + "108", {id:"108", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate, outFields: ["*"]});
 		legendPermits.push({ layer: lyr108, title: 'Forest Land Swap (IPPKH)'});
-		lyr107 = new FeatureLayer(iFeatureFolder + "107", {id:"107", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		/*lyr107 = new FeatureLayer(iFeatureFolder + "107", {id:"107", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendPermits.push({ layer: lyr107, title: 'Forest Conversion to Plantation Development'});
 		lyr106 = new FeatureLayer(iFeatureFolder + "106", {id:"106", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendPermits.push({ layer: lyr106, title: 'Forest Conversion to Transmigration Development'});
+		legendPermits.push({ layer: lyr106, title: 'Forest Conversion to Transmigration Development'});*/
 		
 		//----- socio economic -----
-		lyr116 = new FeatureLayer(iFeatureFolder + "116", {id:"116", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
+		lyr116 = new FeatureLayer(iFeatureFolder + "116", {id:"116", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate, outFields: ["*"]});
 		legendSocioEconomic.push({ layer: lyr116, title: 'Population Distribution'});
 		lyr115 = new FeatureLayer(iFeatureFolder + "115", {id:"115", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
 		legendSocioEconomic.push({ layer: lyr115, title: 'Indigenous People'});
@@ -554,1116 +1520,269 @@ require([
 		
 		//----- topography -----
 		lyr132 = new FeatureLayer(iFeatureFolder + "132", {id:"132", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendTopography.push({ layer: lyr132, title: 'Contour Line - Tebo'});
+		legendTopography.push({ layer: lyr132, title: 'Tebo'});
 		lyr131 = new FeatureLayer(iFeatureFolder + "131", {id:"131", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendTopography.push({ layer: lyr131, title: 'Contour Line - Tanjung JabungTimur'});
+		legendTopography.push({ layer: lyr131, title: 'Tanjung JabungTimur'});
 		lyr130 = new FeatureLayer(iFeatureFolder + "130", {id:"130", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendTopography.push({ layer: lyr130, title: 'Contour Line - Tanjung Jabung Barat'});
+		legendTopography.push({ layer: lyr130, title: 'Tanjung Jabung Barat'});
 		lyr129 = new FeatureLayer(iFeatureFolder + "129", {id:"129", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendTopography.push({ layer: lyr129, title: 'Contour Line - Sungai Penuh'});
+		legendTopography.push({ layer: lyr129, title: 'Sungai Penuh'});
 		lyr128 = new FeatureLayer(iFeatureFolder + "128", {id:"128", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendTopography.push({ layer: lyr128, title: 'Contour Line - Sarolangun'});
+		legendTopography.push({ layer: lyr128, title: 'Sarolangun'});
 		lyr127 = new FeatureLayer(iFeatureFolder + "127", {id:"127", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendTopography.push({ layer: lyr127, title: 'Contour Line - Muaro Jambi'});
+		legendTopography.push({ layer: lyr127, title: 'Muaro Jambi'});
 		lyr126 = new FeatureLayer(iFeatureFolder + "126", {id:"126", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendTopography.push({ layer: lyr126, title: 'Contour Line - Merangin'});
+		legendTopography.push({ layer: lyr126, title: 'Merangin'});
 		lyr125 = new FeatureLayer(iFeatureFolder + "125", {id:"125", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendTopography.push({ layer: lyr125, title: 'Contour Line - Kerinci'});
+		legendTopography.push({ layer: lyr125, title: 'Kerinci'});
 		lyr124 = new FeatureLayer(iFeatureFolder + "124", {id:"124", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendTopography.push({ layer: lyr124, title: 'Contour Line - Kota Jambi'});
+		legendTopography.push({ layer: lyr124, title: 'Kota Jambi'});
 		lyr123 = new FeatureLayer(iFeatureFolder + "123", {id:"123", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendTopography.push({ layer: lyr123, title: 'Contour Line - Bungo'});
+		legendTopography.push({ layer: lyr123, title: 'Bungo'});
 		lyr122 = new FeatureLayer(iFeatureFolder + "122", {id:"122", mode: FeatureLayer.MODE_ONDEMAND, imageParameters : imageParameters, infoTemplate: infoTemplate,});
-		legendTopography.push({ layer: lyr122, title: 'Contour Line - Batanghari'});
+		legendTopography.push({ layer: lyr122, title: 'Batanghari'});
 		
+		fCreateLabelLayers("City_name", "capital", iFeatureFolder + "7");
+		
+        
 		map.addLayers([
-			//indonesiaBackgroundLayer, 
-			indonesiaLayer,
+			//----- jambi layer -----
+			indonesiaBackgroundLayer, 
+			indonesiaLayer, 
 			mcaiGP, mcaiH, mcaiPM,
 			
-			//administrative group layers
-			 lyr8, lyr9, lyr10, lyr11, lyr12,
+			lyr7, lyr8, lyr9, lyr10, lyr11, lyr12,
 			
-			//agriculture group layers
-			lyr14,
+			lyr14, //lyr15, 
+			lyr16, lyr17, lyr18,
 			
-			//carbon project group layers
-			lyr16, lyr17, lyr18, lyr19, lyr20, 
+			lyr20,
 			
-			//climate group layers
-			lyr22,
+			//lyr22, lyr23, lyr24, lyr25, lyr26, lyr27, lyr28, lyr29, 
 			
-			//ecology group layers
-			lyr24, lyr25, lyr26, lyr27, lyr28, lyr29, lyr30, lyr31, 
+			lyr31, lyr32, lyr33, lyr34, 
 			
-			//energy group layers
-			lyr33, lyr34, lyr35, lyr36, 
+			lyr36, //lyr37, lyr38, 
+			lyr39, lyr40, lyr41, lyr42, lyr43,
 			
-			//forestry group layers
-			lyr38, lyr39, lyr40, lyr41, lyr42, lyr43, lyr44, lyr45,
+			//lyr45, lyr46, lyr47, lyr48,
 			
-			/*
-			//hazard vulnerability group layers
-			lyr49, lyr50, lyr51, lyr52, 
-			*/
+			//lyr50, lyr51, lyr52, lyr53,
 			
-			//hotspot group layers
-			lyr52, lyr53, lyr54, lyr55,
+			lyr55, lyr56, lyr57, lyr58, lyr59, lyr60, lyr61, lyr62, lyr63, lyr64, lyr65, lyr66, lyr67, 
+						
+			lyr69, 
+			//lyr70, lyr71, lyr72, lyr73, 
+			lyr74, lyr75, 
+			//lyr76, lyr77, lyr78, lyr79, lyr80,
 			
-			//hydrology group layers
-			lyr57, lyr58, lyr59, lyr60, lyr61, lyr62, lyr63, lyr64, lyr65, lyr66, lyr67, lyr68, lyr69, 
+			lyr82, lyr83, lyr84, lyr85, lyr86, lyr87, lyr88, lyr89, lyr90, lyr91, lyr92, 
 			
-			//infrastructure group layers
-			lyr71, lyr72, lyr73, lyr74, lyr75, lyr76, lyr77, lyr78, lyr79, lyr80, lyr81, lyr82, 
+			lyr94, lyr95, 
 			
-			//landcover
-			lyr84, lyr85, lyr86, lyr87, lyr88, lyr89, lyr90, lyr91, lyr92, lyr93, lyr94, 
+			lyr97, 
 			
-			//lanscape group layers
-			lyr96, lyr97, 
+			lyr99,
 			
-			//land degradation group layers
-			lyr99,  
-			
-			//landuse spatial plan group layers
 			lyr101,
 			
-			//mining group layers
-			lyr103, lyr104, 
+			lyr103, lyr104,
 			
-			//permits group layers
-			lyr106, lyr107, lyr108, lyr109, lyr110, lyr111, lyr112, lyr113, 
+			//lyr106, lyr107, 
+			lyr108, //lyr109, 
+			lyr110, lyr111, lyr112, lyr113,
 			
-			//socio economic group layers
 			lyr115, lyr116, 
 			
-			//soil group layers
-			lyr118, lyr119, lyr120,  
+			lyr118, lyr119, lyr120, 
 			
-			//topography group layers
 			lyr122, lyr123, lyr124, lyr125, lyr126, lyr127, lyr128, lyr129, lyr130, lyr131, lyr132
 		]);
 		
-		console.log("load service layer success");
+		
+		//console.log("load service layer success");
 	}
-	
-	function calcOffset() {
-		//return (map.extent.getWidth() / map.width);
-	}
+    function fCreateLabelLayers(iLabelField, iIdField, iLayerURL ) {
+	    var labelField = iLabelField;
 
-	function fAddLabelLayers() {
-		try {
-			var labelField = "City_name";
-
-			// create a renderer for the capital layer to override default symbology
-			var capitalColor = new esri.Color("#666");
-			var capitalLine = new SimpleLineSymbol("solid", capitalColor, 1.5);
-			var capitalSymbol = new SimpleFillSymbol("solid", capitalLine, null);
-			var capitalRenderer = new SimpleRenderer(capitalSymbol);
-			// create a feature layer to show country boundaries
-			var capitalUrl = iFeatureFolder + "8";
-			capitalLayer = new FeatureLayer(capitalUrl, {
-			  id: "capital",
-			  outFields: [labelField] 
-			});
-			capitalLayer.setRenderer(capitalRenderer);
-			map.addLayer(capitalLayer);
-			 // create a text symbol to define the style of labels
-			var capitalLabel = new TextSymbol().setColor(capitalColor);
-			capitalLabel.font.setSize("10pt");
-			capitalLabel.font.setFamily("arial");
-			capitalLabelRenderer = new SimpleRenderer(capitalLabel);
-			labelLayer = new LabelLayer({ id: "labels" });
-			// tell the label layer to label the countries feature layer 
-			// using the field named "admin"
-			labelLayer.addFeatureLayer(capitalLayer, capitalLabelRenderer, "${" + labelField + "}");
-			// add the label layer to the map
-			map.addLayer(labelLayer);
-		}
-		catch (err) {
-			alert ("Error found");
-			console.log (err.message);
-		}
+	    // create a renderer for the capital layer to override default symbology
+	    var capitalColor = new esri.Color("#666");
+	    var capitalLine = new SimpleLineSymbol("solid", capitalColor, 1.5);
+	    var capitalSymbol = new SimpleFillSymbol("solid", capitalLine, null);
+	    var capitalRenderer = new SimpleRenderer(capitalSymbol);
+	    // create a feature layer to show country boundaries
+	    var capitalUrl = iLayerURL;
+	    capitalLayer = new FeatureLayer(capitalUrl, {
+		    id: iIdField,
+		    outFields: [labelField] 
+	    });
+	    capitalLayer.setRenderer(capitalRenderer);
+	    map.addLayer(capitalLayer);
+		    // create a text symbol to define the style of labels
+	    var capitalLabel = new TextSymbol().setColor(capitalColor);
+	    capitalLabel.font.setSize("10pt");
+	    capitalLabel.font.setFamily("arial");
+	    capitalLabelRenderer = new SimpleRenderer(capitalLabel);
+	    labelLayer = new LabelLayer({ id: "labels" });
+	    // tell the label layer to label the countries feature layer 
+	    // using the field named "admin"
+	    labelLayer.addFeatureLayer(capitalLayer, capitalLabelRenderer, "${" + labelField + "}");
+	    // add the label layer to the map
+	    map.addLayer(labelLayer);
 	}
-	
-	function fSetLegend() {
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-            map: map,
-            layerInfos: legendLayers
-          }, "legendDiv");
-          legenda.startup();
-        });
-		
-		//administrative legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-            map: map,
-            layerInfos: legendAdministrative
-          }, "legendAdministrativeDiv");
-          legenda.startup();
-        });
-		
-		//agriculture legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-            map: map,
-            layerInfos: legendAgriculture
-          }, "legendAgricultureDiv");
-          legenda.startup();
-        });
-		
-		//carbon project legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-            map: map,
-            layerInfos: legendCarbonProject
-          }, "legendCarbonProjectDiv");
-          legenda.startup();
-        });
-		
-		//climate legend 
-		//fCreateLegendDiv(legendClimate,"legendClimateDiv");
-			map.on('layers-add-result', function () {
-			var legenda = new Legend({
-				map: map,
-				layerInfos: legendClimate
-			  }, "legendClimateDiv");
-			  legenda.startup();
-			});
+	function fHideAllFeatureLayers() {
+            //----- jambi layer -----
+			//indonesiaLayer.hide(); 
+			mcaiGP.hide(); mcaiH.hide(); mcaiPM.hide();
+			lyr7.hide(); lyr8.hide(); lyr9.hide(); lyr10.hide(); lyr11.hide(); lyr12.hide();
+			lyr14.hide(); //lyr15.hide(); 
+			lyr16.hide(); lyr17.hide(); lyr18.hide();
+			lyr20.hide();
+			//lyr22.hide(); lyr23.hide(); lyr24.hide(); lyr25.hide(); lyr26.hide(); lyr27.hide(); lyr28.hide(); lyr29.hide(); 
+			lyr31.hide(); lyr32.hide(); lyr33.hide(); lyr34.hide(); 
+			lyr36.hide(); //lyr37.hide(); lyr38.hide(); 
+			lyr39.hide(); lyr40.hide(); lyr41.hide(); lyr42.hide(); lyr43.hide();
+			//lyr45.hide(); lyr46.hide(); lyr47.hide(); lyr48.hide();
+			//lyr50.hide(); lyr51.hide(); lyr52.hide(); lyr53.hide();
+			lyr55.hide(); lyr56.hide(); lyr57.hide(); lyr58.hide(); lyr59.hide(); lyr60.hide(); lyr61.hide(); lyr62.hide(); lyr63.hide(); lyr64.hide(); lyr65.hide(); lyr66.hide(); lyr67.hide(); 
+			lyr69.hide(); 
+			//lyr70.hide(); lyr71.hide(); lyr72.hide(); lyr73.hide(); 
+			lyr74.hide(); lyr75.hide(); 
+			//lyr76.hide(); lyr77.hide(); lyr78.hide(); lyr79.hide(); lyr80.hide();
+			lyr82.hide(); lyr83.hide(); lyr84.hide(); lyr85.hide(); lyr86.hide(); lyr87.hide(); lyr88.hide(); lyr89.hide(); lyr90.hide(); lyr91.hide(); lyr92.hide(); 
+			lyr94.hide(); lyr95.hide(); 
+			lyr97.hide(); 
+			lyr99.hide();
+			lyr101.hide();
+			lyr103.hide(); lyr104.hide();
+			//lyr106.hide(); lyr107.hide(); 
+			lyr108.hide(); //lyr109.hide(); 
+			lyr110.hide(); lyr111.hide(); lyr112.hide(); lyr113.hide();
+			lyr115.hide(); lyr116.hide(); 
+			lyr118.hide(); lyr119.hide(); lyr120.hide(); 
+			lyr122.hide(); lyr123.hide(); lyr124.hide(); lyr125.hide(); lyr126.hide(); lyr127.hide(); lyr128.hide(); lyr129.hide(); lyr130.hide(); lyr131.hide(); lyr132.hide();
 			
-		//ecology legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-			map: map,
-			layerInfos: legendEcology
-		  }, "legendEcologyDiv");
-		  legenda.startup();
-		});
+			capitalLayer.hide(); labelLayer.hide();
+
+            //----- sulawesi barat layer -----
+            /*
+            SBmcaiGP.hide(); SBmcaiH.hide(); SBmcaiPM.hide();
+			
+		SBlyr7.hide();  SBlyr8.hide();  SBlyr9.hide();  SBlyr10.hide();  SBlyr11.hide();  
 		
-		//energy legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-			map: map,
-			layerInfos: legendEnergy
-		  }, "legendEnergyDiv");
-		  legenda.startup();
-		});
+		SBlyr15.hide();  
 		
-		//forestry legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-			map: map,
-			layerInfos: legendForestry
-		  }, "legendForestryDiv");
-		  legenda.startup();
-		});
-		/*
-		//hazard vulnerability legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-			map: map,
-			layerInfos: legendHazardVunerabillity
-		  }, "legendHazardVunerabillityDiv");
-		  legenda.startup();
-		});
-		*/
-		//hotspot legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-			map: map,
-			layerInfos: legendHotspot
-		  }, "legendHotspotDiv");
-		  legenda.startup();
-		});
+		SBlyr17.hide();  SBlyr18.hide();  SBlyr19.hide();  SBlyr20.hide(); 
 		
-		//hydrology legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-			map: map,
-			layerInfos: legendHydrology
-		  }, "legendHydrologyDiv");
-		  legenda.startup();
-		});
+		SBlyr22.hide();  SBlyr23.hide();  
 		
-		//infrastructure legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-			map: map,
-			layerInfos: legendInfrastructure
-		  }, "legendInfrastructureDiv");
-		  legenda.startup();
-		});
+		//SBlyr25.hide();  SBlyr26.hide();  SBlyr27.hide();  SBlyr28.hide();   
 		
-		//landcover legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-			map: map,
-			layerInfos: legendLandcover
-		  }, "legendLandcoverDiv");
-		  legenda.startup();
-		});
+		SBlyr30.hide();  SBlyr31.hide();  SBlyr32.hide();  SBlyr33.hide();   
 		
-		//landscape legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-			map: map,
-			layerInfos: legendLandscape
-		  }, "legendLandscapeDiv");
-		  legenda.startup();
-		});
+		SBlyr35.hide();  SBlyr36.hide();  SBlyr37.hide();  
 		
-		//land degradation legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-			map: map,
-			layerInfos: legendLandDegradation
-		  }, "legendLandDegradationDiv");
-		  legenda.startup();
-		});
+		SBlyr39.hide();  SBlyr40.hide();  SBlyr41.hide();  SBlyr42.hide();  SBlyr43.hide();  
 		
-		//landuse spatial plan legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-			map: map,
-			layerInfos: legendLanduseSpatialPlan
-		  }, "legendLanduseSpatialPlanDiv");
-		  legenda.startup();
-		});
+		SBlyr45.hide();  SBlyr46.hide();  SBlyr47.hide();  
 		
-		//mining legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-			map: map,
-			layerInfos: legendMining
-		  }, "legendMiningDiv");
-		  legenda.startup();
-		});
+		SBlyr61.hide();  SBlyr62.hide();  
 		
-		//permits legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-			map: map,
-			layerInfos: legendPermits
-		  }, "legendPermitsDiv");
-		  legenda.startup();
-		});
+		SBlyr64.hide();  SBlyr65.hide();  SBlyr66.hide();  SBlyr67.hide();   SBlyr68.hide();  SBlyr69.hide();
 		
-		//socio economic legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-			map: map,
-			layerInfos: legendSocioEconomic
-		  }, "legendSocioEconomicDiv");
-		  legenda.startup();
-		});
-		
-		//soil legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-			map: map,
-			layerInfos: legendSoil
-		  }, "legendSoilDiv");
-		  legenda.startup();
-		});
-		
-		//topography legend 
-		map.on('layers-add-result', function () {
-		var legenda = new Legend({
-			map: map,
-			layerInfos: legendTopography
-		  }, "legendTopographyDiv");
-		  legenda.startup();
-		});		
+		SBcapitalLayer.hide(); SBlabelLayer.hide();*/
+	}
+    function fSetLegend() {
+        fCreateLegend(legendLayers, "legendDiv");        
+		fCreateLegend(legendAdministrative, "legendAdministrativeDiv");
+		fCreateLegend(legendCarbonProject, "legendCarbonProjectDiv");
+        fCreateLegend(legendClimate, "legendClimateDiv");
+        //fCreateLegend(legendEcology, "legendEcologyDiv");
+        fCreateLegend(legendEnergy, "legendEnergyDiv");
+        fCreateLegend(legendForestry, "legendForestryDiv");
+        //fCreateLegend(legendHotspot, "legendHotspotDiv");
+        fCreateLegend(legendHydrology, "legendHydrologyDiv");
+        fCreateLegend(legendInfrastructure, "legendInfrastructureDiv");
+        fCreateLegend(legendLandcover, "legendLandcoverDiv");
+        fCreateLegend(legendLandscape, "legendLandscapeDiv");
+        fCreateLegend(legendLandDegradation, "legendLandDegradationDiv");
+        fCreateLegend(legendLanduseSpatialPlan, "legendLanduseSpatialPlanDiv");
+        fCreateLegend(legendPermitAgriculture, "legendPermitAgricultureDiv");
+		fCreateLegend(legendMining, "legendMiningDiv");
+        fCreateLegend(legendPermits, "legendPermitsDiv");
+        fCreateLegend(legendSocioEconomic, "legendSocioEconomicDiv");
+        fCreateLegend(legendSoil, "legendSoilDiv");
+		fCreateLegend(legendTopography, "legendTopographyDiv");
 	}	
-	
-	function changeTransparency(value) {
-		var layer = map.getLayer(8);
-		if(layer != null)
-		{
-			layer.setOpacity(value);
-		}
+	function fAddCategoryGroup() {
+        fCreateCategoryGroup(legendLayers, "toggleGeneral");		
+        fCreateCategoryGroup(legendAdministrative, "toggleAdministrative");
+        fCreateCategoryGroup(legendCarbonProject, "toggleCarbonProject");
+        fCreateCategoryGroup(legendClimate, "toggleClimate");
+		//fCreateCategoryGroup(legendEcology, "toggleEcology");
+        fCreateCategoryGroup(legendEnergy, "toggleEnergy");
+        fCreateCategoryGroup(legendForestry, "toggleForestry");
+        //fCreateCategoryGroup(legendHotspot, "toggleHotspot");
+        fCreateCategoryGroup(legendHydrology, "toggleHydrology");
+        fCreateCategoryGroup(legendInfrastructure, "toggleInfrastructure");
+        fCreateCategoryGroup(legendLandcover, "toggleLandcover");
+        fCreateCategoryGroup(legendLandscape, "toggleLandscape");
+        fCreateCategoryGroup(legendLandDegradation, "toggleLandDegradation");
+        fCreateCategoryGroup(legendLanduseSpatialPlan, "toggleLanduseSpatialPlan");
+		fCreateCategoryGroup(legendPermitAgriculture, "togglePermitAgriculture");
+		fCreateCategoryGroup(legendMining, "toggleMining");
+        fCreateCategoryGroup(legendPermits, "togglePermits");
+        fCreateCategoryGroup(legendSocioEconomic, "toggleSocioEconomic");
+        fCreateCategoryGroup(legendSoil, "toggleSoil");
+        fCreateCategoryGroup(legendTopography, "toggleTopography");
 	}
-	
-	function fAddCategoryGroup() {		
-		//----- genereal -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendLayers, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-			
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleGeneral"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- administrative -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendAdministrative, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-			
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleAdministrative"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- agriculture -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendAgriculture, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleAgriculture"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- carbon project -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendCarbonProject, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleCarbonProject"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- climate -----
-		//fCreateCheckboxToggle(legendClimate, "toggleClimate");
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendClimate, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleClimate"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- ecology -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendEcology, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleEcology"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- energy -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendEnergy, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleEnergy"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- forestry -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendForestry, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleForestry"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		/*
-		//----- hazard vulnerability -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendHazardVunerabillity, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-			
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleHazardVunerabillity"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		*/
-		
-		//----- hotspot -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendHotspot, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleHotspot"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- hydrology -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendHydrology, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleHydrology"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- infrastructure -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendInfrastructure, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleInfrastructure"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- landcover -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendLandcover, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleLandcover"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- landscape -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendLandscape, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleLandscape"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- land degradation -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendLandDegradation, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleLandDegradation"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- landuse spatial plan -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendLanduseSpatialPlan, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleLanduseSpatialPlan"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- mining -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendMining, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleMining"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- permits -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendPermits, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("togglePermits"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//-----socio economic -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendSocioEconomic, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleSocioEconomic"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- soil -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendSoil, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleSoil"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });
-		
-		//----- topography -----
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(legendTopography, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId("toggleTopography"), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });		
+	function fCheckLegendDiv() {		
+        fHideLegendDiv(legendLayers,"legendDiv");
+        fHideLegendDiv(legendAdministrative,"legendAdministrativeDiv");
+        fHideLegendDiv(legendCarbonProject,"legendCarbonProjectDiv");
+        fHideLegendDiv(legendClimate,"legendClimateDiv");
+        //fHideLegendDiv(legendEcology,"legendEcologyDiv");
+	    fHideLegendDiv(legendEnergy,"legendEnergyDiv");
+        fHideLegendDiv(legendForestry,"legendForestryDiv");
+        //fHideLegendDiv(legendHotspot,"legendHotspotDiv");
+		fHideLegendDiv(legendHydrology,"legendHydrologyDiv");
+        fHideLegendDiv(legendInfrastructure,"legendInfrastructureDiv");
+        fHideLegendDiv(legendLandcover,"legendLandcoverDiv");
+        fHideLegendDiv(legendLandscape,"legendLandscapeDiv");
+        fHideLegendDiv(legendLandDegradation,"legendLandDegradationDiv");
+		fHideLegendDiv(legendLanduseSpatialPlan,"legendLanduseSpatialPlanDiv");
+		fHideLegendDiv(legendPermitAgriculture, "legendPermitAgricultureDiv");
+        fHideLegendDiv(legendMining,"legendMiningDiv");
+        fHideLegendDiv(legendPermits,"legendPermitsDiv");
+        fHideLegendDiv(legendSocioEconomic,"legendSocioEconomicDiv");
+        fHideLegendDiv(legendSoil,"legendSoilDiv");
+		fHideLegendDiv(legendTopography,"legendTopographyDiv");
 	}
-	
-	function fCreateLegendDiv(iLegendInfo, iLegendDiv) {
-		/*
-		try {
-			map.on('layers-add-result', function () {
-			var legenda = new Legend({
-				map: map,
-				layerInfos: iLegendInfo
-			  }, iLegendDiv);
-			  legenda.startup();
-			});
-		}
-		catch e(){
-			alert("An error has occured " + e.message);
-			console.log("Error at fCreateLegendDiv. " + e.message);
-		}*/
+	function fKosongDiv() {
+		dom.byId("legendDiv").innerHTML="";
+		dom.byId("legendAdministrativeDiv").innerHTML="";
+		dom.byId("legendCarbonProjectDiv").innerHTML="";
+		dom.byId("legendClimateDiv").innerHTML="";
+		//dom.byId("legendEcologyDiv").innerHTML="";
+		dom.byId("legendEnergyDiv").innerHTML="";
+		dom.byId("legendForestryDiv").innerHTML="";
+		//dom.byId("legendHotspotDiv").innerHTML="";
+		dom.byId("legendHydrologyDiv").innerHTML="";
+		dom.byId("legendInfrastructureDiv").innerHTML="";
+		dom.byId("legendLandcoverDiv").innerHTML="";
+		dom.byId("legendLandscapeDiv").innerHTML="";
+		dom.byId("legendLandDegradationDiv").innerHTML="";
+		dom.byId("legendPermitAgricultureDiv").innerHTML="";
+		dom.byId("legendMiningDiv").innerHTML="";
+		dom.byId("legendPermitsDiv").innerHTML="";
+		dom.byId("legendLanduseSpatialPlanDiv").innerHTML="";
+		dom.byId("legendSocioEconomicDiv").innerHTML="";
+		dom.byId("legendSoilDiv").innerHTML="";
+		dom.byId("legendTopographyDiv").innerHTML="";
 	}
-	function fCreateCheckboxToggle(iLegendName, iToggleName){
-		map.on('layers-add-result', function () {
-          //add check boxes
-          arrayUtils.forEach(iLegendName, function (layer) {
-            var layerName = layer.title;
-            var checkBox = new CheckBox({
-              name: "checkBox" + layer.layer.id,
-              value: layer.layer.id,
-              checked: layer.layer.visible
-            });
-            checkBox.on("change", function () {
-              var targetLayer = map.getLayer(this.value);
-              targetLayer.setVisibility(!targetLayer.visible);
-              this.checked = targetLayer.visible;
-			  fAdditionalInfo(this.value);
-            });
-
-            //add the check box and label to the toc
-            domConstruct.place(checkBox.domNode, dom.byId(iToggleName), "after");
-            var checkLabel = domConstruct.create('label', {
-                'for': checkBox.name,
-                innerHTML: layerName
-              }, checkBox.domNode, "after");
-            domConstruct.place("<br />", checkLabel, "after");
-          });
-        });		
-	}
-	
-	function fCheckLegendDiv() {
-		var iAktif=false;
-		
-		//general
-		 arrayUtils.forEach(legendLayers, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}
-         });
-		 if (!iAktif) {
-			dom.byId("legendDiv").innerHTML="";			
-			};
-		 iAktif=false;
-		 
-		//legendAdministrativeDiv
-		 arrayUtils.forEach(legendAdministrative, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
-         });
-		 if (!iAktif) {dom.byId("legendAdministrativeDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendAgricultureDiv
-		 arrayUtils.forEach(legendAgriculture, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}
-         });
-		 if (!iAktif) {dom.byId("legendAgricultureDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendCarbonProjectDiv
-		 arrayUtils.forEach(legendCarbonProject, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
-         });
-		 if (!iAktif) {dom.byId("legendCarbonProjectDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//general
-		 arrayUtils.forEach(legendLayers, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}
-         });
-		 if (!iAktif) {dom.byId("legendDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendClimateDiv
-		 arrayUtils.forEach(legendClimate, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
-         });
-		 if (!iAktif) {dom.byId("legendClimateDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendEcologyDiv
-		 arrayUtils.forEach(legendEcology, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}
-         });
-		 if (!iAktif) {dom.byId("legendEcologyDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendEnergyDiv
-		 arrayUtils.forEach(legendEnergy, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
-         });
-		 if (!iAktif) {dom.byId("legendEnergyDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		 //legendForestryDiv
-		 arrayUtils.forEach(legendForestry, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}
-         });
-		 if (!iAktif) {dom.byId("legendForestryDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendHazardVunerabillityDiv
-		 arrayUtils.forEach(legendHazardVunerabillity, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
-         });
-		 if (!iAktif) {dom.byId("legendHazardVunerabillityDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendHotspotDiv
-		 arrayUtils.forEach(legendHotspot, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}
-         });
-		 if (!iAktif) {dom.byId("legendHotspotDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendHydrologyDiv
-		 arrayUtils.forEach(legendHydrology, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
-         });
-		 if (!iAktif) {dom.byId("legendHydrologyDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendInfrastructureDiv
-		 arrayUtils.forEach(legendInfrastructure, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}
-         });
-		 if (!iAktif) {dom.byId("legendInfrastructureDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendLandcoverDiv
-		 arrayUtils.forEach(legendLandcover, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
-         });
-		 if (!iAktif) {dom.byId("legendLandcoverDiv").innerHTML="";};
-		 iAktif=false;
-		
-		//legendLandscapeDiv
-		 arrayUtils.forEach(legendLandscape, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
-         });
-		 if (!iAktif) {dom.byId("legendLandscapeDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendLandDegradationDiv
-		 arrayUtils.forEach(legendLandDegradation, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}
-         });
-		 if (!iAktif) {dom.byId("legendLandDegradationDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendMiningDiv
-		 arrayUtils.forEach(legendMining, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
-         });
-		 if (!iAktif) {dom.byId("legendMiningDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendTopographyDiv
-		 arrayUtils.forEach(legendTopography, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
-         });
-		 if (!iAktif) {dom.byId("legendTopographyDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendPermitsDiv
-		 arrayUtils.forEach(legendPermits, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
-         });
-		 if (!iAktif) {dom.byId("legendPermitsDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendLanduseSpatialPlanDiv
-		 arrayUtils.forEach(legendLanduseSpatialPlan, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
-         });
-		 if (!iAktif) {dom.byId("legendLanduseSpatialPlanDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendSocioEconomicDiv
-		 arrayUtils.forEach(legendSocioEconomic, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
-         });
-		 if (!iAktif) {dom.byId("legendSocioEconomicDiv").innerHTML="";};
-		 iAktif=false;
-		 
-		//legendSoilDiv
-		 arrayUtils.forEach(legendSoil, function (layer) {
-			if (map.getLayer(layer.layer.id).visible) {iAktif=true}			
-         });
-		 if (!iAktif) {dom.byId("legendSoilDiv").innerHTML="";};
-		 iAktif=false;
-	}
-	
 	function fAdditionalInfo(iVal) {
-		fCheckLegendDiv();
+		fCheckLegendDivAll();
 		
-		//alert(iVal);
 		var targetLayer = map.getLayer(iVal);        
 		var iIsi1 = "<table><tr><td valign='top'>Layer Name</td><td valign='top'>";
 		var iIsi2 ="</td></tr><tr><td valign='top'>Description</td><td valign='top'>";
@@ -1672,21 +1791,23 @@ require([
 		var iKet1 = "", iKet2 = "", iKet3 = "";
 		var iHasilPlantation="", iHasilBerbak="", iHasilCarbon="", iHasil ="";
 		
-		try {
-			capitalLayer.hide();
-			labelLayer.hide();
-				
+		capitalLayer.hide();
+		labelLayer.hide();
+		
+		var iProvinceName = dijit.byId("provinceSelectLayer").get("value").trim();
+		
+		if (iProvinceName == "Jambi") {
 			for (var i = 1; i < 132; i++) {
 				//capital district label 
 				//district layer
-				if (i == "8" && map.getLayer(i).visible) {					
+				if (i == "7" && map.getLayer(i).visible) {					
 					capitalLayer.show();
 					labelLayer.show();			
 					//alert("Edo");
 				}
 				
 				//district layer
-				if (i == "10" && map.getLayer(i).visible) {			
+				if (i == "9" && map.getLayer(i).visible) {			
 					iKet1 = "District Boundary";				
 					iKet2 = "Polygon showing district boundary of Jambi Province.";
 					iKet3 = "BPS";
@@ -1695,7 +1816,7 @@ require([
 				}
 				
 				//subdistrict layer
-				if (i == "11" && map.getLayer(i).visible) {			
+				if (i == "10" && map.getLayer(i).visible) {			
 					iKet1 = "Sub District Boundary";				
 					iKet2 = "Polygon showing sub district boundary of Jambi Province.";
 					iKet3 = "BPS";
@@ -1704,7 +1825,7 @@ require([
 				}
 				
 				//village layer
-				if (i == "12" && map.getLayer(i).visible) {			
+				if (i == "11" && map.getLayer(i).visible) {			
 					iKet1 = "Village Boundary";				
 					iKet2 = "Polygon showing village boundary of Jambi Province.";
 					iKet3 = "BPS";
@@ -1713,6 +1834,7 @@ require([
 				}
 				
 				//plantation concession layer
+				/*
 				if (i == "14" && map.getLayer(i).visible) {			
 					iKet1 = "Plantation Concession";
 					
@@ -1724,33 +1846,30 @@ require([
 					
 					iHasil = iHasil + iIsi1 + iKet1 + iIsi2 + iKet2 + iIsi3 + iKet3 + iIsi4;
 				}
+				*/
 
 				//berbak np carbon initiative layer
-				if (i == "19" && map.getLayer(i).visible) {
-					iKet1 = "Berbak NP Carbon Initiative";
-					
+				if (i == "17" && map.getLayer(i).visible) {
+					iKet1 = "Berbak NP Carbon Initiative";					
 					iKet2 = "Polygon showing location of carbon project, which is based on MoU between Zoological Society of London (ZSL) Indonesia and  Berbak National Park signed on October 12th 2011.  ";
 					iKet2 = iKet2 + "The MoU aims to reduce emission from deforestation and degradation in ";
 					iKet2 = iKet2 + "Berbak National Park, which includes 3 year work plan to achieve self-financing, sustainable conservation of the area.";
-
 					iKet3 = "MoF";
 					
 					iHasil = iHasil + iIsi1 + iKet1 + iIsi2 + iKet2 + iIsi3 + iKet3 + iIsi4
 				}
 
 				//carbon measurement layer
-				if (i == "16" && map.getLayer(i).visible) {
-					iKet1 = "Carbon Measurement Points (ZSL)";
-					
-					iKet2 = "Points showing location of carbon measurement in Berbak National Park";
-					
+				if (i == "14" && map.getLayer(i).visible) {
+					iKet1 = "Carbon Measurement Points (ZSL)";				
+					iKet2 = "Points showing location of carbon measurement in Berbak National Park";					
 					iKet3 = "MoF";
 					
 					iHasil = iHasil + iIsi1 + iKet1 + iIsi2 + iKet2 + iIsi3 + iKet3 + iIsi4
 				}
 				
 				//carbon stock layer
-				if (i == "20" && map.getLayer(i).visible) {
+				if (i == "18" && map.getLayer(i).visible) {
 					iKet1 = "Carbon Stock 2011 (MoF)";
 					
 					iKet2 = "Carbon stock estimation, which was derived by landcover and carbon value. ";
@@ -1761,17 +1880,19 @@ require([
 					iHasil = iHasil + iIsi1 + iKet1 + iIsi2 + iKet2 + iIsi3 + iKet3 + iIsi4
 				}
 				
+				/*
 				//permanent forest layer
-				if (i == "17" && map.getLayer(i).visible) {
+				if (i == "15" && map.getLayer(i).visible) {
 					iKet1 = "Permanent Forest Plots (ZSL)";
 					iKet2 = "Points showing location of permanent forest plots in Berbak National Park";
 					iKet3 = "MoF & PTHI";
 					
 					iHasil = iHasil + iIsi1 + iKet1 + iIsi2 + iKet2 + iIsi3 + iKet3 + iIsi4
 				}
+				*/
 				
 				//sampling location layer
-				if (i == "18" && map.getLayer(i).visible) {
+				if (i == "16" && map.getLayer(i).visible) {
 					iKet1 = "Sampling Location (ICRAF)";
 					iKet2 = "Carbon measurement sampling for ALREDDI-ICRAF year 2012. ";
 					iKet2 = iKet2 + "The map derived from coordinate of sampling location.";
@@ -1781,7 +1902,7 @@ require([
 				}
 				
 				//rain falls layer
-				if (i == "22" && map.getLayer(i).visible) {
+				if (i == "20" && map.getLayer(i).visible) {
 					iKet1 = "Rain Falls";
 					iKet2 = "Precipitation data in Jambi Province, scale 1:250.000. Based  on landsystem 1987. ";
 					iKet3 = "BIG";
@@ -1790,7 +1911,8 @@ require([
 				}
 
 				//tiger distribution layer
-				if (i == "24" && map.getLayer(i).visible) {
+				/*
+				if (i == "22" && map.getLayer(i).visible) {
 					iKet1 = "Tiger Distribution";
 					iKet2 = "Polygon showing tiger habitat in Sumatra, based on area  of 250km2 assumption which is the smallest area for tiger to be able to live.";
 					iKet3 = "WWF";
@@ -1799,7 +1921,7 @@ require([
 				}
 				
 				//elephant distribution layer
-				if (i == "25" && map.getLayer(i).visible) {
+				if (i == "23" && map.getLayer(i).visible) {
 					iKet1 = "Elephant Distribution";
 					iKet2 = "Polygon showing elephant distribution in Sumatera. The map was published in www.savesumatera.org.";
 					iKet3 = "WWF";
@@ -1808,7 +1930,7 @@ require([
 				}
 				
 				//hcv 1 1 layer
-				if (i == "26" && map.getLayer(i).visible) {
+				if (i == "24" && map.getLayer(i).visible) {
 					iKet1 = "HCV 1.1 - Wild Plant Sanctuaries (WWF)";
 					iKet2 = "Polygon showing wild plant sanctuary area to support biodiversity.  The map was published in www.savesumatera.org.";
 					iKet3 = "WWF";
@@ -1817,7 +1939,7 @@ require([
 				}
 				
 				//hcv 1 2 layer
-				if (i == "27" && map.getLayer(i).visible) {
+				if (i == "25" && map.getLayer(i).visible) {
 					iKet1 = "HCV 1.2 - Threatened and Endangered Species (WWF)";
 					iKet2 = "Polygon showing threatens and endangered species ecosystem. The map was published in www.savesumatera.org.";
 					iKet3 = "WWF";
@@ -1826,7 +1948,7 @@ require([
 				}
 				
 				//hcv 2 layer
-				if (i == "28" && map.getLayer(i).visible) {
+				if (i == "26" && map.getLayer(i).visible) {
 					iKet1 = "HCV 2 – Important Natural Landscapes";
 					iKet2 = "Polygon showing natural landscapes, which has capacity to maintain natural ecology processes and dynamics. The map was published in www.savesumatera.org.";
 					iKet3 = "WWF";
@@ -1835,7 +1957,7 @@ require([
 				}
 				
 				//hcv 3 layer
-				if (i == "29" && map.getLayer(i).visible) {
+				if (i == "27" && map.getLayer(i).visible) {
 					iKet1 = "HCV 3 – Endangered Ecosystem ";
 					iKet2 = "Polygon showing rare and endangered ecosystem. The map was published in www.savesumatera.org.";
 					iKet3 = "WWF";
@@ -1844,7 +1966,7 @@ require([
 				}
 				
 				//ecoregions layer
-				if (i == "30" && map.getLayer(i).visible) {
+				if (i == "28" && map.getLayer(i).visible) {
 					iKet1 = "Ecoregion (WWF)";
 					iKet2 = "Polygon showing econame and regions in Sumatera 1999 - 2000. The map was published in www.savesumatera.org.";
 					iKet3 = "WWF";
@@ -1853,16 +1975,16 @@ require([
 				}
 				
 				//importan ecosystem layer
-				if (i == "31" && map.getLayer(i).visible) {
+				if (i == "29" && map.getLayer(i).visible) {
 					iKet1 = "Important Ecosystem";
 					iKet2 = "Polygon showing Important ecosystem. The map was published in www.savesumatera.org.";
 					iKet3 = "WWF";
 					
 					iHasil = iHasil + iIsi1 + iKet1 + iIsi2 + iKet2 + iIsi3 + iKet3 + iIsi4
 				}
-				
+				*/
 				//transmission line layer
-				if (i == "36" && map.getLayer(i).visible) {
+				if (i == "34" && map.getLayer(i).visible) {
 					iKet1 = "Transmission Line";
 					iKet2 = "Line showing existing transmission line in Jambi.";
 					iKet3 = "Bappeda";
@@ -1871,7 +1993,7 @@ require([
 				}
 				
 				//forest land status layer
-				if (i == "38" && map.getLayer(i).visible) {
+				if (i == "36" && map.getLayer(i).visible) {
 					iKet1 = "Forest Status";
 					iKet2 = "Polygon showing forest function (Protected Forest, Production Forest, Limited Production Forest, etc)";
 					iKet3 = "MoF";
@@ -1879,8 +2001,9 @@ require([
 					iHasil = iHasil + iIsi1 + iKet1 + iIsi2 + iKet2 + iIsi3 + iKet3 + iIsi4
 				}
 				
+				/*
 				//ppib layer
-				if (i == "39" && map.getLayer(i).visible) {
+				if (i == "37" && map.getLayer(i).visible) {
 					iKet1 = "Forest Production Moratorium";
 					iKet2 = "Polygon showing forest production moratorium in Jambi.";
 					iKet3 = "MoF";
@@ -1889,16 +2012,17 @@ require([
 				}
 				
 				//forest conservation alliance layer
-				if (i == "40" && map.getLayer(i).visible) {
+				if (i == "38" && map.getLayer(i).visible) {
 					iKet1 = "Forest Concession Activities";
 					iKet2 = "Polygon showing forest conservation activities in Jambi.";
 					iKet3 = "MoF";
 					
 					iHasil = iHasil + iIsi1 + iKet1 + iIsi2 + iKet2 + iIsi3 + iKet3 + iIsi4
 				}
+				*/
 				
 				//forest management unit layer
-				if (i == "41" && map.getLayer(i).visible) {
+				if (i == "39" && map.getLayer(i).visible) {
 					iKet1 = "Forest Management Unit";
 					iKet2 = "Polygon showing forest management unit.";
 					iKet3 = "MoF";
@@ -1907,7 +2031,7 @@ require([
 				}
 				
 				//rimba corridor layer
-				if (i == "42" && map.getLayer(i).visible) {
+				if (i == "40" && map.getLayer(i).visible) {
 					iKet1 = "Rimba Corridor";
 					iKet2 = "Polygon showing Rimba Corridor in Sumatera";
 					iKet3 = "MCC dataset";
@@ -1916,7 +2040,7 @@ require([
 				}
 				
 				//village forest layer
-				if (i == "43" && map.getLayer(i).visible) {
+				if (i == "41" && map.getLayer(i).visible) {
 					iKet1 = "Village Forest";
 					iKet2 = "Polygon showing village forest management.";
 					iKet3 = "MoF";
@@ -1925,7 +2049,7 @@ require([
 				}
 				
 				//tenurial forest alliance layer
-				if (i == "44" && map.getLayer(i).visible) {
+				if (i == "42" && map.getLayer(i).visible) {
 					iKet1 = "Tenurial Forest";
 					iKet2 = "Polygon showing tenurial forest.";
 					iKet3 = "MoF";
@@ -1969,40 +2093,40 @@ require([
 					
 					iHasil = iHasil + iIsi1 + iKet1 + iIsi2 + iKet2 + iIsi3 + iKet3 + iIsi4
 				}
-				*/
 				
 				//hotspot layer
-				if (i == "52" && map.getLayer(i).visible) {
+				if (i == "50" && map.getLayer(i).visible) {
 					iKet1 = "Hotspot Distribution Jambi (1999 - 2009)";
 					iKet2 = "Point showing hotspot  location, which indicate forest fire, for period 1999 - 2009.";
 					iKet3 = "USGS";
 					
 					iHasil = iHasil + iIsi1 + iKet1 + iIsi2 + iKet2 + iIsi3 + iKet3 + iIsi4
 				}
-				if (i == "53" && map.getLayer(i).visible) {
+				if (i == "51" && map.getLayer(i).visible) {
 					iKet1 = "Hotspot Distribution Jambi (2010)";
 					iKet2 = "Point showing hotspot  location, which indicate forest fire, for period 2010.";
 					iKet3 = "USGS";
 					
 					iHasil = iHasil + iIsi1 + iKet1 + iIsi2 + iKet2 + iIsi3 + iKet3 + iIsi4
 				}
-				if (i == "54" && map.getLayer(i).visible) {
+				if (i == "52" && map.getLayer(i).visible) {
 					iKet1 = "Hotspot Distribution Jambi (2011)";
 					iKet2 = "Point showing hotspot  location, which indicate forest fire, for period 2011.";
 					iKet3 = "USGS";
 					
 					iHasil = iHasil + iIsi1 + iKet1 + iIsi2 + iKet2 + iIsi3 + iKet3 + iIsi4
 				}
-				if (i == "55" && map.getLayer(i).visible) {
+				if (i == "53" && map.getLayer(i).visible) {
 					iKet1 = "Hotspot Distribution (2012)";
 					iKet2 = "Point showing hotspot  location, which indicate forest fire, for period 1999 - 2012.";
 					iKet3 = "USGS";
 					
 					iHasil = iHasil + iIsi1 + iKet1 + iIsi2 + iKet2 + iIsi3 + iKet3 + iIsi4
 				}
+				*/
 				
 				//watershed boundary layer
-				if (i == "69" && map.getLayer(i).visible) {
+				if (i == "67" && map.getLayer(i).visible) {
 					iKet1 = "Watershed Boundary";
 					iKet2 = "Polygon showing watershed boundary based on SK 511/Menhut-V/2011.";
 					iKet3 = "MoF";
@@ -2011,7 +2135,7 @@ require([
 				}
 				
 				//river big layer
-				if (i == "57" && map.getLayer(i).visible) {
+				if (i == "55" && map.getLayer(i).visible) {
 					iKet1 = "Main River";
 					iKet2 = "Polygon showing main river.";
 					iKet3 = "BIG";
@@ -2021,6 +2145,8 @@ require([
 				
 				//river small layer
 				if (
+					(i == "56" && map.getLayer(i).visible) || 
+					(i == "57" && map.getLayer(i).visible) || 
 					(i == "58" && map.getLayer(i).visible) || 
 					(i == "59" && map.getLayer(i).visible) || 
 					(i == "60" && map.getLayer(i).visible) || 
@@ -2029,9 +2155,7 @@ require([
 					(i == "63" && map.getLayer(i).visible) || 
 					(i == "64" && map.getLayer(i).visible) || 
 					(i == "65" && map.getLayer(i).visible) || 
-					(i == "66" && map.getLayer(i).visible) || 
-					(i == "67" && map.getLayer(i).visible) || 
-					(i == "68" && map.getLayer(i).visible)
+					(i == "66" && map.getLayer(i).visible)
 					) {
 					iKet1 = "River";
 					iKet2 = "Polygon showing smaller river.";
@@ -2042,6 +2166,8 @@ require([
 							
 				//landcover layer
 				if (
+					(i == "82" && map.getLayer(i).visible) || 
+					(i == "83" && map.getLayer(i).visible) || 
 					(i == "84" && map.getLayer(i).visible) || 
 					(i == "85" && map.getLayer(i).visible) || 
 					(i == "86" && map.getLayer(i).visible) || 
@@ -2050,9 +2176,7 @@ require([
 					(i == "89" && map.getLayer(i).visible) || 
 					(i == "90" && map.getLayer(i).visible) || 
 					(i == "91" && map.getLayer(i).visible) || 
-					(i == "92" && map.getLayer(i).visible) || 
-					(i == "93" && map.getLayer(i).visible) || 
-					(i == "94" && map.getLayer(i).visible)
+					(i == "92" && map.getLayer(i).visible)
 					) {
 					iKet1 = "Landcover 2011 (MoF)";
 					iKet2 = "Polygon showing landcover in Jambi.";
@@ -2062,7 +2186,7 @@ require([
 				}
 				
 				//critical land layer
-				if (i == "99" && map.getLayer(i).visible) {
+				if (i == "97" && map.getLayer(i).visible) {
 					iKet1 = "Critical Land";
 					iKet2 = "Polygon showing critical land, which is classified as very critical, somewhat critical, critical, critical potential, and not critical.";
 					iKet3 = "MoF";
@@ -2081,9 +2205,9 @@ require([
 				}
 				*/
 				
-				//landuse spatial plan layer
-				if (i == "101" && map.getLayer(i).visible) {
-					iKet1 = "Landuse Spatial Plan";
+				//Landuse (Spatial Planning) layer
+				if (i == "99" && map.getLayer(i).visible) {
+					iKet1 = "Landuse (Spatial Planning)";
 					iKet2 = "Polygon showing the draft of RTRW of Jambi.";
 					iKet3 = "Bappeda";
 					
@@ -2108,6 +2232,7 @@ require([
 					iHasil = iHasil + iIsi1 + iKet1 + iIsi2 + iKet2 + iIsi3 + iKet3 + iIsi4
 				}
 				
+				/*
 				//forest area release layer
 				if (i == "106" && map.getLayer(i).visible) {
 					iKet1 = "Forest Conversion to Transmigration Development";
@@ -2125,6 +2250,7 @@ require([
 					
 					iHasil = iHasil + iIsi1 + iKet1 + iIsi2 + iKet2 + iIsi3 + iKet3 + iIsi4
 				}
+				*/
 				
 				//forest land swap layer
 				if (i == "108" && map.getLayer(i).visible) {
@@ -2135,6 +2261,7 @@ require([
 					iHasil = iHasil + iIsi1 + iKet1 + iIsi2 + iKet2 + iIsi3 + iKet3 + iIsi4
 				}
 				
+				/*
 				//hgu layer
 				if (i == "109" && map.getLayer(i).visible) {
 					iKet1 = "Land Cultivation Right (HGU)";
@@ -2143,10 +2270,10 @@ require([
 					
 					iHasil = iHasil + iIsi1 + iKet1 + iIsi2 + iKet2 + iIsi3 + iKet3 + iIsi4
 				}
-				
+				*/
 				//iuphhk ha layer
 				if (i == "110" && map.getLayer(i).visible) {
-					iKet1 = "Permit to Utilize Forest Product in Natural Forest";
+					iKet1 = "Permit to Utilize Forest Product in Natural Forest (IUPHHK – HA)";
 					iKet2 = "Polygon showing timber concessions in Jambi province. Issued on 2013.";
 					iKet3 = "MoF";
 					
@@ -2155,7 +2282,7 @@ require([
 				
 				//iuphhk hti layer
 				if (i == "111" && map.getLayer(i).visible) {
-					iKet1 = "Permit to Utilize Forest Product in Timber Estate";
+					iKet1 = "Permit to Utilize Forest Product in Timber Estate (IUPHHK – HTI)";
 					iKet2 = "Polygon showing industrial timber plantation concessions in Jambi province. Issued on 2013.";
 					iKet3 = "MoF";
 					
@@ -2164,7 +2291,7 @@ require([
 				
 				//iuphhk htr layer
 				if (i == "112" && map.getLayer(i).visible) {
-					iKet1 = "Permit to Utilize Forest Product in Community Timber Estate";
+					iKet1 = "Permit to Utilize Forest Product in Community Timber Estate (IUPHHK – HTR)";
 					iKet2 = "Polygon showing forest plantation managed by local people.";
 					iKet3 = "MoF";
 					
@@ -2173,7 +2300,7 @@ require([
 				
 				//iuphhk re layer
 				if (i == "113" && map.getLayer(i).visible) {
-					iKet1 = "Permit to Utilize Forest Product in Ecological Restoration";
+					iKet1 = "Permit to Utilize Forest Product in Ecological Restoration (IUPHHK – RE)";
 					iKet2 = "Polygon showing location of ecosystem restoration in Jambi.";
 					iKet3 = "MoF";
 					
@@ -2245,22 +2372,16 @@ require([
 					
 					iHasil = iHasil + iIsi1 + iKet1 + iIsi2 + iKet2 + iIsi3 + iKet3 + iIsi4
 				}
-				
-				
-				
-				
-				
 			}
 		}
-		catch (err) {
-			alert ("Error found at fAdditionalInfo function");
-			console.log(err.message);
-		}
+			
+
 		
 		//iHasil = iHasilPlantation + iHasilBerbak + iHasilCarbon + iHasilCarbonMeasurement ;
 		//add layer sort description
 		dom.byId("shortDescriptionDiv").innerHTML=iHasil;
-	}
+	}	
+	
 	
 	function fHomeButton() {
 		hideLayers();
@@ -2282,103 +2403,11 @@ require([
 		})
 		
 		fAdditionalInfo(1);
+        fCheckLegendDivAll();
 	}
 		
 	function hideLayers() {
 		fHideAllFeatureLayers();
-	}
-	function fKosongDiv() {
-		dom.byId("legendDiv").innerHTML="";
-		dom.byId("legendAdministrativeDiv").innerHTML="";
-		dom.byId("legendAgricultureDiv").innerHTML="";
-		dom.byId("legendCarbonProjectDiv").innerHTML="";
-		dom.byId("legendClimateDiv").innerHTML="";
-		dom.byId("legendEcologyDiv").innerHTML="";
-		dom.byId("legendEnergyDiv").innerHTML="";
-		dom.byId("legendForestryDiv").innerHTML="";
-		dom.byId("legendHazardVunerabillityDiv").innerHTML="";
-		dom.byId("legendHotspotDiv").innerHTML="";
-		dom.byId("legendHydrologyDiv").innerHTML="";
-		dom.byId("legendInfrastructureDiv").innerHTML="";
-		dom.byId("legendLandcoverDiv").innerHTML="";
-		dom.byId("legendLandscapeDiv").innerHTML="";
-		dom.byId("legendLandDegradationDiv").innerHTML="";
-		dom.byId("legendMiningDiv").innerHTML="";
-		dom.byId("legendPermitsDiv").innerHTML="";
-		dom.byId("legendLanduseSpatialPlanDiv").innerHTML="";
-		dom.byId("legendSocioEconomicDiv").innerHTML="";
-		dom.byId("legendSoilDiv").innerHTML="";
-		dom.byId("legendTopographyDiv").innerHTML="";
-	}
-	function fHideAllFeatureLayers() {
-			//indonesiaBackgroundLayer.hide(); 
-			//indonesiaLayer.hide(); 
-			mcaiGP.hide(); mcaiH.hide();  mcaiPM.hide(); 
-			
-			//administrative group layers
-			 lyr8.hide();  lyr9.hide();  lyr10.hide();  lyr11.hide();  lyr12.hide(); 
-			
-			//agriculture group layers
-			lyr14.hide(); 
-			
-			//carbon project group layers
-			lyr16.hide();  lyr17.hide();  lyr18.hide();  lyr19.hide();  lyr20.hide();  
-			
-			//climate group layers
-			lyr22.hide(); 
-			
-			//ecology group layers
-			lyr24.hide();  lyr25.hide();  lyr26.hide();  lyr27.hide();  lyr28.hide();  lyr29.hide();  lyr30.hide();  lyr31.hide();  
-			
-			//energy group layers
-			lyr33.hide();  lyr34.hide();  lyr35.hide();  lyr36.hide();  
-			
-			//forestry group layers
-			lyr38.hide();  lyr39.hide();  lyr40.hide();  lyr41.hide();  lyr42.hide();  lyr43.hide();  lyr44.hide();  lyr45.hide(); 
-			
-			/*
-			//hazard vulnerability group layers
-			lyr49.hide();  lyr50.hide();  lyr51.hide();  lyr52.hide();  
-			*/
-			
-			//hotspot group layers
-			lyr52.hide();  lyr53.hide();  lyr54.hide();  lyr55.hide(); 
-			
-			//hydrology group layers
-			lyr57.hide();  lyr58.hide();  lyr59.hide();  lyr60.hide();  lyr61.hide();  lyr62.hide();  lyr63.hide();  lyr64.hide();  lyr65.hide();  lyr66.hide();  lyr67.hide();  lyr68.hide();  lyr69.hide();  
-			
-			//infrastructure group layers
-			lyr71.hide();  lyr72.hide();  lyr73.hide();  lyr74.hide();  lyr75.hide();  lyr76.hide();  lyr77.hide();  lyr78.hide();  lyr79.hide();  lyr80.hide();  lyr81.hide();  lyr82.hide();  
-			
-			//landcover
-			lyr84.hide();  lyr85.hide();  lyr86.hide();  lyr87.hide();  lyr88.hide();  lyr89.hide();  lyr90.hide();  lyr91.hide();  lyr92.hide();  lyr93.hide();  lyr94.hide();  
-			
-			//lanscape group layers
-			lyr96.hide();  lyr97.hide();  
-			
-			//land degradation group layers
-			lyr99.hide();   
-			
-			//landuse spatial plan group layers
-			lyr101.hide(); 
-			
-			//mining group layers
-			lyr103.hide();  lyr104.hide();  
-			
-			//permits group layers
-			lyr106.hide();  lyr107.hide();  lyr108.hide();  lyr109.hide();  lyr110.hide();  lyr111.hide();  lyr112.hide();  lyr113.hide();  
-			
-			//socio economic group layers
-			lyr115.hide();  lyr116.hide();  
-			
-			//soil group layers
-			lyr118.hide();  lyr119.hide();  lyr120.hide();   
-			
-			//topography group layers
-			lyr122.hide();  lyr123.hide();  lyr124.hide();  lyr125.hide(); lyr126.hide();  lyr127.hide();  lyr128.hide();  lyr129.hide();  lyr130.hide();  lyr131.hide();  lyr132.hide();
-			
-			//label layers
-			capitalLayer.hide(); labelLayer.hide();
 	}
 	
 	function fLoadWidgets() {
@@ -2396,6 +2425,18 @@ require([
 		basemapGallery.startup();
 		//add custom basemap
 		var layer = new esri.dijit.BasemapLayer({
+				url: "http://services.arcgisonline.com/ArcGIS/rest/services/World_Shaded_Relief/MapServer"
+				//url:"http://" + iAlamatLokal + ":6080/arcgis/rest/services/mcai/mca_indonesia/MapServer/4"
+				//url:"http://services.arcgisonline.com/ArcGIS/services"
+			});
+			var basemap = new esri.dijit.Basemap({
+				layers:[layer],
+				title:"Default",
+				thumbnailUrl:"images/basebandNone.jpg"
+			});
+		basemapGallery.add(basemap);
+		/*
+		var layer = new esri.dijit.BasemapLayer({				
 				url:"http://" + iAlamatLokal + ":6080/arcgis/rest/services/mcai/mca_indonesia/MapServer/4"
 				//url:"http://services.arcgisonline.com/ArcGIS/services"
 			});
@@ -2405,6 +2446,7 @@ require([
 				thumbnailUrl:"images/basebandNone.jpg"
 			});
 		basemapGallery.add(basemap);
+		*/
 		
 		//add measurement widget
 			var measurement = new Measurement({
@@ -2420,49 +2462,57 @@ require([
 			scalebarUnit: "metric"
 			},dojo.byId("scalebarDiv"));		
 		
-		//add slider
+		//add jambi slider
 		fCreateSlider(1, 3, "sliderGeneral");
-		fCreateSlider(8, 12, "sliderAdministrative");
-		fCreateSlider(14, 14, "sliderAgriculture");
-		fCreateSlider(16, 20, "sliderCarbonProject");
-		fCreateSlider(22, 22, "sliderClimate");
-		fCreateSlider(24, 31, "sliderEcology");
-		fCreateSlider(33, 36, "sliderEnergy");
-		fCreateSlider(38, 45, "sliderForestry");
-		fCreateSlider(52, 55, "sliderHotspot");
-		fCreateSlider(57, 69, "sliderHydrology");
-		fCreateSlider(71, 82, "sliderInfrastructure");
-		fCreateSlider(84, 94, "sliderLandcover");
-		fCreateSlider(96, 97, "sliderLandscape");
-		fCreateSlider(99, 99, "sliderLandDegradation");
-		fCreateSlider(101, 101, "sliderMining");
-		fCreateSlider(103, 104, "sliderPermits");
-		fCreateSlider(106, 113, "sliderLanduseSpatialPlan");
+		fCreateSlider(7, 12, "sliderAdministrative");
+		//fCreateSlider(14, 14, "sliderAgriculture");
+		fCreateSlider(14, 18, "sliderCarbonProject");
+		fCreateSlider(20, 20, "sliderClimate");
+		fCreateSlider(22, 29, "sliderEcology");
+		fCreateSlider(31, 34, "sliderEnergy");
+		fCreateSlider(36, 43, "sliderForestry");
+		//fCreateSlider(50, 53, "sliderHotspot");
+		fCreateSlider(55, 67, "sliderHydrology");
+		fCreateSlider(69, 80, "sliderInfrastructure");
+		fCreateSlider(82, 92, "sliderLandcover");
+		fCreateSlider(94, 95, "sliderLandscape");
+		fCreateSlider(97, 97, "sliderLandDegradation");
+		fCreateSlider(99,  99, "sliderLanduseSpatialPlan");
+		fCreateSlider(101, 101, "sliderPermitAgriculture");
+		fCreateSlider(103, 104, "sliderMining");
+		fCreateSlider(106, 113, "sliderPermits");
 		fCreateSlider(115, 116, "sliderSocioEconomic");
 		fCreateSlider(118, 120, "sliderSoil");
 		fCreateSlider(122, 132, "sliderTopograpy");
-	}
-	
-	function fCreateSlider(iLayerIDStart, iLayerIDEnd, iSliderDivName) {
-		try {
-			slider = new HorizontalSlider({
-			name: "slider" + iLayerIDStart,
-			value: 1,
-			minimum: 0,
-			maximum: 1,
-			intermediateChanges: true,
-			style: "250px",
-			onChange: function(value){
-					for (var i = iLayerIDStart; i <= iLayerIDEnd; i++) {
-						map.getLayer(i).setOpacity(value);
-					}			
-				}
-			}, iSliderDivName);
-		}
-		catch (err) {
-			alert ("Error found");
-			console.log ("fCreateSlider : " + err.message);
-		}		
+		
+		//add sulawesi barat slider
+		fCreateSlider(501, 503, "sliderGeneralSB");
+		fCreateSlider(507, 511, "sliderAdministrativeSB");
+		fCreateSlider(515, 515, "sliderClimateSB");
+		fCreateSlider(517, 520, "sliderEnergySB");
+		fCreateSlider(522, 523, "sliderForestrySB");
+		fCreateSlider(530, 533, "sliderHydrologySB");
+		fCreateSlider(535, 537, "sliderInfrastructureSB");
+		fCreateSlider(539, 543, "sliderLandcoverSB");
+		fCreateSlider(545, 547, "sliderLandscapeSB");
+		fCreateSlider(561, 562, "sliderSoilSB");
+		fCreateSlider(564, 569, "sliderTopograpySB");
+		
+		toggler = new Toggler({
+			node: "rightPane",
+			//showFunc: coreFx.wipeIn,
+			//hideFunc: coreFx.wipeOut
+		});
+		togglerJambiArea = new Toggler({
+			node: "jambiAreaDiv",
+			showFunc: coreFx.wipeIn,
+			hideFunc: coreFx.wipeOut
+		});
+		togglerSulawesiBaratArea = new Toggler({
+			node: "sulawesiBaratAreaDiv",
+			showFunc: coreFx.wipeIn,
+			hideFunc: coreFx.wipeOut
+		});
 	}
 	
 	function fRadioProvince() {
@@ -2506,7 +2556,6 @@ require([
 		dijit.byId("districtSelect").attr("disabled", true);
 		dijit.byId("landscapeSelect").attr("disabled", true);
 	}
-	
 	function fComboDisableZT() {
 		dijit.byId("provinceSelectZT").set("value","-----");
 		dijit.byId("districtSelectZT").set("value","-----");
@@ -2515,46 +2564,13 @@ require([
 		dijit.byId("provinceSelectZT").attr("disabled", true);
 		dijit.byId("districtSelectZT").attr("disabled", true);
 		dijit.byId("landscapeSelectZT").attr("disabled", true);
-	}
-	
+	}	
 	function fLoadAreaList() {
 		//set analysis combo data
 		var provinceStore = new Memory({
 			data: [
-				/*{name:"Aceh", id:"11"},
-				{name:"Bali", id:"51"},
-				{name:"Banten", id:"36"},
-				{name:"Bengkulu", id:"17"},
-				{name:"Gorontalo", id:"75"},
-				{name:"Jakarta", id:"31"},*/
 				{name:"Jambi", id:"15"},
-				/*{name:"Jawa Barat", id:"32"},
-				{name:"Jawa Tengah", id:"33"},
-				{name:"Jawa Timur", id:"35"},
-				{name:"Kalimantan Barat", id:"61"},
-				{name:"Kalimantan Selatan", id:"63"},
-				{name:"Kalimantan Tengah", id:"62"},
-				{name:"Kalimantan Timur", id:"64"},
-				{name:"Kalimantan Utara", id:"--"},
-				{name:"Kepulauan Bangka Belitung", id:"19"},
-				{name:"Kepulauan Riau", id:"21"},
-				{name:"Lampung", id:"18"},
-				{name:"Maluku", id:"81"},
-				{name:"Maluku Utara", id:"82"},
-				{name:"Nusa Tenggara Barat", id:"52"},
-				{name:"Nusa Tenggara Timur", id:"53"},
-				{name:"Papua", id:"94"},
-				{name:"Papua Barat", id:"91"},
-				{name:"Riau", id:"14"},*/
 				{name:"Sulawesi Barat", id:"76"},
-				/*{name:"Sulawesi Selatan", id:"73"},
-				{name:"Sulawesi Tengah", id:"72"},
-				{name:"Sulawesi Tenggara", id:"74"},
-				{name:"Sulawesi Utara", id:"71"},
-				{name:"Sumatera Barat", id:"13"},
-				{name:"Sumatera Selatan", id:"16"},
-				{name:"Sumatera Utara", id:"12"},
-				{name:"Yogyakarta", id:"34"}*/
 			]
 		});
 		var districtStore = new Memory({
@@ -2587,7 +2603,7 @@ require([
 			value: "landscape",
 			name: "rbAnalysis",
 		}, "radioLandscape");
-		
+				
 		var comboBox = new ComboBox({
 			id: "provinceSelect",
 			name: "province",
@@ -2615,64 +2631,37 @@ require([
 		}, "processButton");
 		fComboDisable();
 		dijit.byId("provinceSelect").attr("disabled", false);
-	}
-	
+	}	
 	function fLoadZoomTo() {
-	//set analysis combo data
+	
 		var provinceStoreZT = new Memory({
 			data: [
-				/*{name:"Aceh", id:"11"},
-				{name:"Bali", id:"51"},
-				{name:"Banten", id:"36"},
-				{name:"Bengkulu", id:"17"},
-				{name:"Gorontalo", id:"75"},
-				{name:"Jakarta", id:"31"},*/
 				{name:"Jambi", id:"15"},
-				/*{name:"Jawa Barat", id:"32"},
-				{name:"Jawa Tengah", id:"33"},
-				{name:"Jawa Timur", id:"35"},
-				{name:"Kalimantan Barat", id:"61"},
-				{name:"Kalimantan Selatan", id:"63"},
-				{name:"Kalimantan Tengah", id:"62"},
-				{name:"Kalimantan Timur", id:"64"},
-				{name:"Kalimantan Utara", id:"--"},
-				{name:"Kepulauan Bangka Belitung", id:"19"},
-				{name:"Kepulauan Riau", id:"21"},
-				{name:"Lampung", id:"18"},
-				{name:"Maluku", id:"81"},
-				{name:"Maluku Utara", id:"82"},
-				{name:"Nusa Tenggara Barat", id:"52"},
-				{name:"Nusa Tenggara Timur", id:"53"},
-				{name:"Papua", id:"94"},
-				{name:"Papua Barat", id:"91"},
-				{name:"Riau", id:"14"},
 				{name:"Sulawesi Barat", id:"76"},
-				{name:"Sulawesi Selatan", id:"73"},
-				{name:"Sulawesi Tengah", id:"72"},
-				{name:"Sulawesi Tenggara", id:"74"},
-				{name:"Sulawesi Utara", id:"71"},
-				{name:"Sumatera Barat", id:"13"},
-				{name:"Sumatera Selatan", id:"16"},
-				{name:"Sumatera Utara", id:"12"},
-				{name:"Yogyakarta", id:"34"}*/
 			]
 		});
+		
 		var districtStoreZT = new Memory({
 			data: [
 				{name:"Muaro Jambi", id:"MJ"},
-				{name:"Merangin", id:"MN"}
-				
-				//{name:"Mamuju", id:"MJ"},
-				//{name:"Mamasa", id:"MS"}
+				{name:"Merangin", id:"MN"},				
+				{name:"Mamuju", id:"MM"},
+				{name:"Mamuju Utara", id:"MU"},
+				{name:"Majene", id:"ME"},
+				{name:"Mamasa", id:"MS"},
+				{name:"Polewali Mandar", id:"PM"}
 			]
 		});
 		var landscapeStoreZT = new Memory({
 			data: [
 				{name:"Berbak", id:"BT"},
-				{name:"Sungai Tenang", id:"ST"}
+				{name:"Sungai Tenang", id:"ST"},
+				{name:"Bonehau Kalumpang", id:"BK"},
+				{name:"Sumarorong Pana", id:"ST"},
+				{name:"Mambi Bambang", id:"SA"}
 			]
 		});
-									
+
 		var radioProvinceZT = new RadioButton({
 			checked: true,
 			value: "province",
@@ -2690,15 +2679,31 @@ require([
 		}, "radioLandscapeZT");
 		
 		var comboBox = new ComboBox({
+			id: "provinceSelectLayer",
+			name: "provinceLayer",
+			placeHolder: "Select Province",
+			value: "Jambi",
+			store: provinceStoreZT,
+			searchAttr: "name"
+		}, "provinceSelectLayer");
+		var selectLayerButton = new Button({
+			label: "Select",
+			//onClick: fAnalysis(),
+		}, "selectLayerButton");
+		
+		
+		var comboBox = new ComboBox({
 			id: "provinceSelectZT",
 			name: "province",
+			placeHolder: "Select Province",
 			value: "-----",
 			store: provinceStoreZT,
 			searchAttr: "name"
-		}, "provinceSelectZT");
+		}, "provinceSelectZT");	
 		var comboBox = new ComboBox({
 			id: "districtSelectZT",
 			name: "district",
+			placeHolder: "Select District",
 			value: "-----",
 			store: districtStoreZT,
 			searchAttr: "name"
@@ -2706,6 +2711,7 @@ require([
 		var comboBox = new ComboBox({
 			id: "landscapeSelectZT",
 			name: "landscape",
+			placeHolder: "Select Landscape",
 			value: "-----",
 			store: landscapeStoreZT,
 			searchAttr: "name"
@@ -2717,7 +2723,26 @@ require([
 		fComboDisableZT();
 		dijit.byId("provinceSelectZT").attr("disabled", false);
 	}
+	function fLoadLayerNameAD() {
+		var layerNameAD = new Memory({
+			data: [
+				{name:"-----", id:"9"},
+				{name:"District", id:"9"},
+				{name:"Sub District", id:"10"},
+				{name:"Village", id:"11"},
+				{name:"RE Microhydro", id:"12"},
+				{name:"Forest Status", id:"13"}
+			]
+		});
 		
+		var comboBox = new ComboBox({
+			id: "ADLayerName",
+			name: "LayerNameAD",
+			value: "-----",
+			store: layerNameAD,
+			searchAttr: "name"
+		}, "ADLayerName");
+	}	
 	function fProcess() {
 		var iArea, iSelectArea, iSelectAnalysis;
 				
@@ -2817,7 +2842,8 @@ require([
 	}
 
 	function fZoomTo() {
-		
+		fCheckLegendDivAll();
+
 		var iArea, iSelectArea, iSelectAnalysis;
 		
 		if (dom.byId("radioProvinceZT").checked && dijit.byId("provinceSelectZT").get("value") != "-----" ) {
@@ -2866,25 +2892,29 @@ require([
 					break;
 				
 				case 'Mamuju':
-					map.centerAndZoom(esri.geometry.Point([13279863.546149915,-200570.76222028106], 
-						new esri.SpatialReference({ wkid: 102100 })),8);
+					map.centerAndZoom(esri.geometry.Point([13307686.624445667,-270310.92384258437], 
+						new esri.SpatialReference({ wkid: 102100 })),9);
 					break;
 					
 				case 'Mamasa':
-					map.centerAndZoom(esri.geometry.Point([13278640.55369733,-328526.3475696624], 
+					map.centerAndZoom(esri.geometry.Point([13284908.390016677,-333065.72406475135], 
 						new esri.SpatialReference({ wkid: 102100 })),10);
 					break;
-			}
-			
-			switch (iSelectArea) {
-				case "Mamuju" :
-					//provinceLayer.show();
+					
+				case 'Mamuju Utara':
+					map.centerAndZoom(esri.geometry.Point([13325572.889064377,-151374.90783096413], 
+						new esri.SpatialReference({ wkid: 102100 })),9);
 					break;
 					
-				case "Mamasa" :
-					//provinceLayer.show();
+				case 'Majene':
+					map.centerAndZoom(esri.geometry.Point([13250053.105118625,-363640.53537883365], 
+						new esri.SpatialReference({ wkid: 102100 })),10);
 					break;
-			
+					
+				case 'Polewali Mandar':
+					map.centerAndZoom(esri.geometry.Point([13273595.709830476,-376940.57830043713], 
+						new esri.SpatialReference({ wkid: 102100 })),10);
+					break;
 			}
 		}
 		
@@ -2902,10 +2932,66 @@ require([
 					map.centerAndZoom(esri.geometry.Point([11352427.440911409,-282511.2565419838], 
 						new esri.SpatialReference({ wkid: 102100 })),12); 
 					break;
+					
+				case 'Bonehau Kalumpang':
+					map.centerAndZoom(esri.geometry.Point([13296106.414660493,-281661.82254292985], 
+						new esri.SpatialReference({ wkid: 102100 })),11); 
+					break;
+					
+				case 'Sumarorong Pana':
+					map.centerAndZoom(esri.geometry.Point([13298514.181051472,-348888.18891965173], 
+						new esri.SpatialReference({ wkid: 102100 })),12); 
+					break;
+				case 'Mambi Bambang':
+					map.centerAndZoom(esri.geometry.Point([13276423.879877085,-325957.08043412975], 
+						new esri.SpatialReference({ wkid: 102100 })),12); 
+					break;
 			}			
 		}
 	}
-
-	//end of scripts
+	
+	function fSelectProvinceLayer() {
+		var iSelectProvince;
+		var iOk = 0;
+		iSelectProvince = dijit.byId("provinceSelectLayer").get("value").trim();
+		
+		switch (iSelectProvince)
+			{
+				case 'Jambi':
+					togglerJambiArea.show();
+					togglerSulawesiBaratArea.hide();
+					
+					fHideAllFeatureLayers();
+					
+					iOk=1;
+					break;
+					
+				case 'Sulawesi Barat':
+					//load sulawesi barat
+					togglerJambiArea.hide();
+					togglerSulawesiBaratArea.show();
+					
+					fHideAllFeatureLayers();
+					
+					iOk=1;
+					break;
+			}
+		
+		if (iOk == 1) {
+			dojo.forEach (dojo.query("input[type=checkbox]"), function(item){
+			var widget = dijit.getEnclosingWidget(item);
+			//alert(widget)
+			widget.set('checked', false);
+			})
+			
+			fAdditionalInfo(1);
+			fCheckLegendDivAll();
+		}
+	}
+	
+	
+	
+	
+	//----- end of scripts
       });
 	  

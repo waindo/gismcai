@@ -111,14 +111,14 @@ html, body {
       .claro .dijitTitlePaneTitle {
         font-weight:600;
         border:solid 1px #29201A;
-        border-radius:10px;
+        //border-radius:10px;
       }
       .claro .dijitTitlePaneTitleHover {
       }
       .claro .dijitTitlePaneTitleActive {
       }
       .claro .dijitTitlePaneContentOuter {
-        border-radius:10px;
+        //border-radius:10px;
         border-right: solid 2px #808775 !important;
         border-bottom: solid 2px #808775 !important;
         border-left: solid 2px #808775 !important;
